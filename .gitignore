@@ -47,3 +47,14 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# For Mac
+**/.DS_Store
+._*
+
+# exclude Specific Folders from  push to github
+figures/*
+images/*
+files/*
+data/*
+outputs/*
