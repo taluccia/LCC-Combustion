@@ -1,0 +1,119 @@
+---
+title: "ExtractFireAtlasDetails"
+author: "Anna Talucci"
+date: "2025-04-28"
+output: html_document
+---
+
+# Overview
+years of interest: 
+
+LC "2015" "2018" "2019" "2020" "2021" "2022"
+lcc 2013 2015 2017 2018 2019 2020 2021 2022
+fisl "2004" "2015" "2019" "2020" "2021"
+
+# Packages
+
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(sf)
+```
+
+# Data
+
+## Points
+```{r}
+points = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_lcc_2025-04-24.shp", "lc_lcc_2025-04-24")
+```
+```{r}
+fisl_points = st_read( "../outputs/dob_na/fisl_dob_na_2025-06-06.gpkg")
+```
+
+```{r}
+lc_points = st_read("../outputs/dob_na/lc_dob_na_2025-06-06.gpkg")
+lcc_points = st_read("../outputs/dob_na/lcc_dob_na_2025-06-06.gpkg")
+```
+```{r}
+lcc_points
+```
+
+```{r}
+sort(unique(lc_points$fireYr))
+sort(unique(lcc_points$fireYr))
+```
+
+## Fire Atlas data
+
+```{r}
+gpkg_files <- list.files("../data/fireAtlas/2022/Snapshot", pattern='.gpkg$', full.names=TRUE)
+```
+
+```{r}
+first = st_read(gpkg_files[1])
+first
+```
+
+# Filter points for fire year
+
+```{r}
+( points_subset = lcc_points %>% filter(fireYr==2022) %>% st_transform(., crs=3571) )
+```
+
+# Function to read one gpkg and spatial join to points
+
+```{r}
+join_one <- function(file) {
+  poly <- tryCatch(st_read(file, quiet = TRUE), error = function(e) return(NULL))
+  if (is.null(poly) || nrow(poly) == 0) return(NULL)
+
+  if (st_crs(poly) != st_crs(points_subset)) {
+    poly <- st_transform(poly, st_crs(points_subset))
+  }
+
+  joined <- st_join(points_subset, poly, join = st_intersects)
+
+  # Force avgspread to numeric, or use mutate(across(...)) for multiple columns
+  if ("avgspread" %in% names(joined)) {
+    joined <- joined %>%
+  mutate(across(c(avgspread, spread95, mergedate), ~ suppressWarnings(as.numeric(.))))
+  }
+
+  joined$source_file <- basename(file)
+  return(joined)
+}
+
+# Map safely and drop NULLs
+joined_list <- map(gpkg_files, join_one) %>%
+  compact()  # removes NULL entries
+
+# Combine
+joined_points <- bind_rows(joined_list)
+```
+
+```{r}
+( joined_dropna = joined_points %>% drop_na(tst_year, tst_month, tst_day) )
+```
+
+
+
+
+
+# select one point per site baased on min dob
+
+```{r}
+( joined_points_min_dob <- joined_points %>%
+  group_by(ID) %>%
+  slice_min(ted_doy, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+    dplyr::select(ID:fireYr, tst_year, tst_month, tst_day, ted_year, ted_month, ted_day, ted_ampm, ted_doy)
+)
+
+```
+
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+st_write(joined_points_min_dob, "../outputs/fireatlas_dob/lcc_fireAtlas_dob_2022.shp", driver="ESRI Shapefile")
+```

@@ -1,0 +1,192 @@
+---
+title: "Fisl LC Burndate"
+author: "Anna Talucci"
+date: "2025-06-07"
+output: html_document
+---
+
+# Overview
+
+Combine burndate modis and fire atlas in to project level shapefiles for EE.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+## modis dob
+```{r}
+fisl_modis = st_read("../outputs/dob_modis/fisl_dob_2025-06-10.gpkg")
+lc_modis = st_read("../outputs/dob_modis/lc_dob_2025-06-10.gpkg")
+lcc_modis = st_read("../outputs/dob_modis/lcc_dob_2025-06-10.gpkg")
+```
+
+## fire atlas
+
+```{r}
+fisl_list = list.files("../outputs/fireatlas_dob/fisl", pattern='.shp$', full.names = TRUE)
+fisl_list
+```
+
+```{r}
+lc_list = list.files("../outputs/fireatlas_dob/lc", pattern='.shp$', full.names = TRUE)
+lc_list
+```
+
+```{r}
+lcc_list = list.files("../outputs/fireatlas_dob/lcc", pattern='.shp$', full.names = TRUE)
+lcc_list
+```
+
+
+# Combine fire atlas data
+
+```{r}
+sf_rbind <- function(file_list) {
+  sf_data <- purrr::map_dfr(file_list, st_read)
+  return(sf_data)
+}
+
+```
+
+```{r}
+fisl_fireatlas = sf_rbind(fisl_list)
+lc_fireatlas = sf_rbind(lc_list)
+lcc_fireatlas = sf_rbind(lcc_list)
+```
+
+```{r}
+fisl_fireatlas
+lc_fireatlas
+lcc_fireatlas
+```
+
+```{r}
+fisl_modis
+lc_modis
+lcc_modis
+```
+
+
+# Clean Fire Atlas
+
+```{r}
+clean_fireatlas = function(df){
+  df %>%
+  mutate(ted_date = as.Date(paste(ted_year, ted_month, ted_day, sep = "-"))) %>%
+  select(ID, lat, lon, fireYr, ted_doy, ted_date) %>%
+  rename(dob = ted_doy, date = ted_date) %>% 
+    st_drop_geometry()
+}
+```
+
+
+```{r}
+( fisl_fireatlas_clean = clean_fireatlas(fisl_fireatlas) )
+( lc_fireatlas_clean = clean_fireatlas(lc_fireatlas) )
+( lcc_fireatlas_clean = clean_fireatlas(lcc_fireatlas) )
+```
+
+# Organize Modis
+
+```{r}
+clean_modis = function(df){
+  df %>%
+  mutate(date= as.Date(BurnDate-1, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  select(-month, -day) %>% 
+    st_drop_geometry()
+}
+```
+
+```{r}
+( fisl_modis_clean = clean_modis(fisl_modis) )
+( lc_modis_clean = clean_modis(lc_modis) )
+( lcc_modis_clean = clean_modis(lcc_modis) )
+```
+
+# Combine
+
+```{r}
+( fisl = bind_rows(fisl_modis_clean, fisl_fireatlas_clean) )
+( lc = bind_rows(lc_modis_clean, lc_fireatlas_clean) )
+( lcc = bind_rows(lcc_modis_clean, lcc_fireatlas_clean) )
+```
+
+# Spatialize
+
+## Function to spatialize
+
+```{r}
+df_to_sf_wgs84 <- function(x){
+  st_as_sf(x, coords = c("lon","lat"), crs = 4326, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+```{r}
+df_to_sf_NAD83 <- function(x){
+  st_as_sf(x, coords = c("lon","lat"), crs = 4269, remove = FALSE) # X. Walker states crs epsg:3338 but it ends up in the ocean 
+}
+```
+
+## To points
+
+```{r}
+( lc_WGS84 = lc %>% 
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326)
+)
+```
+
+```{r}
+( lcc_WGS84 = lcc %>% 
+    #drop_na(latitude) %>%
+    df_to_sf_wgs84() 
+)
+```
+
+```{r}
+( fisl_WGS84 = fisl %>% 
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326)
+)
+```
+
+
+
+# Unique Dates List for EE
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(fisl$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc$date))), collapse = ", "))
+```
+
+# Date as character
+
+```{r}
+( fisl_ee = fisl_WGS84 %>% mutate(date = as.character(date)) )
+( lc_ee = lc_WGS84 %>% mutate(date = as.character(date)) )
+( lcc_ee = lcc_WGS84 %>% mutate(date = as.character(date)) )
+```
+
+# Save
+
+```{r eval=FALSE, include=FALSE}
+st_write(fisl_ee, "../outputs/dob_for_ee/fisl_dob_2025-06-10.shp", driver="ESRI Shapefile")
+st_write(lc_ee, "../outputs/dob_for_ee/lc_dob_2025-06-10.shp", driver="ESRI Shapefile")
+st_write(lcc_ee, "../outputs/dob_for_ee/lcc_dob_2025-06-10.shp", driver="ESRI Shapefile")
+```
