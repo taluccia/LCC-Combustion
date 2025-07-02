@@ -88,8 +88,8 @@ csv_rbind <- function(file_list) {
 
 ```{r}
 clean_select_FWI <- function(df){df %>% 
-    rename(BUI = build_up_index, DC= drought_code, DMC = duff_moisture_code, DOB_lst = dob, FFMC = fine_fuel_moisture_code, FWI = fire_weather_index, ISI = initial_fire_spread_index) %>%
-  select(ID, date, DOB_lst, fireYr, BUI, DC, DMC, FFMC, FWI, ISI )
+    rename(BUI = build_up_index, DC= drought_code, DMC = duff_moisture_code, DOB_lst = dob, FFMC = fine_fuel_moisture_code, FWI = fire_weather_index, ISI = initial_fire_spread_index, DSR = fire_daily_severity_rating) %>%
+  select(ID, date, DOB_lst, fireYr, BUI, DC, DMC, FFMC, FWI, ISI, DSR)
 }
 ```
 
@@ -123,9 +123,9 @@ lcc_dfs <- list(lcc_fwi_sub, lcc_gfwed_sub)
 # Save
 
 ```{r}
-write_csv(fisl, "../outputs/LCC_cleaned/csv/2025-06-11_Fisl_fwi_gfwed.csv")
-write_csv(lc, "../outputs/LCC_cleaned/csv/2025-06-11_LC_fwi_gfwed.csv")
-write_csv(lcc, "../outputs/LCC_cleaned/csv/2025-06-11_LCC_fwi_gfwed.csv")
+write_csv(fisl, "../outputs/LCC_cleaned/csv/2025-06-23_Fisl_fwi_gfwed.csv")
+write_csv(lc, "../outputs/LCC_cleaned/csv/2025-06-23_LC_fwi_gfwed.csv")
+write_csv(lcc, "../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
 ```
 
 

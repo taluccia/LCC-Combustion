@@ -66,7 +66,7 @@ fisl_dob_list
 fisl_cna = read_csv("../data/combustion_data_layers/FISL/2025-06-02_climateNA_FISL_Normal_1981_2010MSY.csv")
 ```
 ```{r}
-fisl_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-11_Fisl_fwi_gfwed.csv")
+fisl_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_Fisl_fwi_gfwed.csv")
 ```
 
 ## LC
@@ -100,7 +100,7 @@ lc_dob_list
 lc_cna = read_csv("../data/combustion_data_layers/LC/2025-06-02_climateNA_LC_Normal_1981_2010MSY.csv")
 ```
 ```{r}
-lc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-11_LC_fwi_gfwed.csv")
+lc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LC_fwi_gfwed.csv")
 ```
 
 ## LCC
@@ -135,7 +135,7 @@ lcc_cna = read_csv("../data/combustion_data_layers/LCC/2025-06-02_climateNA_LCC_
 ```
 
 ```{r}
-lcc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-11_LCC_fwi_gfwed.csv")
+lcc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
 ```
 ## Field data
 ```{r}
@@ -437,16 +437,12 @@ burn_year
 Date
 DSR
 
-# Finalize LC and FISL for combustion model
+## Save LC and FISL for combustion model
+
 
 ```{r}
-( fisl_for_model = fisl_df1 %>% select(-lat, -lon) %>% drop_na() )
-( lc_for_model = lc_df1 %>% select(-lat, -lon) %>% drop_na() )
-```
-
-```{r}
-write_csv(lc_for_model, "../outputs/LCC_cleaned/csv/2025-06-23_LC_forModel.csv")
-write_csv(fisl_for_model, "../outputs/LCC_cleaned/csv/2025-06-23_FISL_forModel.csv")
+write_csv(lc_df1, "../outputs/LCC_cleaned/csv/2025-06-23_LC_forModel.csv")
+write_csv(fisl_df1, "../outputs/LCC_cleaned/csv/2025-06-23_FISL_forModel.csv")
 ```
 
 ## missing data for combustion variable data frames
