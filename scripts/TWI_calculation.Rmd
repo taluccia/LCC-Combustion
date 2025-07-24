@@ -1,0 +1,178 @@
+---
+title: "TWI_Calculation"
+author: "Anna Talucci"
+date: "2025-07-21"
+output: html_document
+---
+# Overview 
+
+Adapted from Mathes script
+
+## Load packages
+
+```{r}
+library(tmap)
+```
+
+## Code
+
+```{r}
+############################ TWI Calculation ###################
+
+dem <- rast("../outputs/twi/elevation_fisl_lc.tif")
+
+writeRaster(dem, "../outputs/TWI_Input/dem.tif", overwrite = TRUE) 
+
+#an artifact of outputting the DEM for this analysis is that there are a bunch of errant cells around the border that don’t belong in the DEM. If we make a map with them, it really throws off the scale. So we are going to set any elevation values below 1500 ft to NA.
+#this does not work!!!! The elevation is too low
+#dem[dem < 1500] <- NA
+
+##Plot DEM 
+
+tm_shape(dem)+
+  tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE)+
+  tm_scale_bar()
+
+
+##Hillshade
+wbt_hillshade(dem = "../outputs/TWI_Input/dem.tif",
+              output = "../outputs/TWI_Input/brush_hillshade.tif",
+              azimuth = 115)
+
+hillshade <- raster("../outputs/TWI_Input/brush_hillshade.tif")
+
+
+##Fill and breach depressions in prep for TWI derivation 
+tm_shape(hillshade)+
+  tm_raster(style = "cont",  palette = "-Greys",legend.show = FALSE)+
+  tm_scale_bar()
+
+
+wbt_breach_depressions_least_cost(
+  dem = "../outputs/TWI_Input/dem.tif",
+  output = "../outputs/TWI_Input/breached.tif",
+  dist = 5,
+  fill = TRUE)
+
+wbt_fill_depressions_wang_and_liu(
+  dem = "../outputs/TWI_Input/breached.tif",
+  output = "../outputs/TWI_Input/filled_breached.tif"
+)
+
+filled_breached <- raster("../outputs/TWI_Input/filled_breached.tif")
+
+## What did this do?
+
+difference <- dem - filled_breached
+
+
+difference[difference == 0] <- NA
+
+tm_shape(hillshade)+
+  tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE)+
+  
+  tm_shape(difference)+
+  tm_raster(style = "cont",legend.show = TRUE)
+
+
+##D8 Flow accumulation 
+
+wbt_d8_flow_accumulation(input = "../outputs/TWI_Input/filled_breached.tif",
+                         output = "../outputs/TWI_Input/flowaccumulation.tif")
+
+d8 <- raster("../outputs/TWI_Input/flowaccumulation.tif")
+
+tm_shape(hillshade)+
+  tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
+  tm_shape(log(d8))+
+  tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE, alpha = .5)+
+  tm_scale_bar()
+
+
+##dinfinity flow accumulation 
+wbt_d_inf_flow_accumulation("../outputs/TWI_Input/filled_breached.tif",
+                            "../outputs/TWI_Input/flowaccumulationdf.tif", 
+                            out_type = "Specific Contributing Area")
+
+dinf <- raster("../outputs/TWI_Input/flowaccumulationdf.tif")
+
+
+
+##TWI 
+wbt_slope(dem = "../outputs/TWI_Input/filled_breached.tif",
+          output = "../outputs/TWI_Input/demslope.tif",
+          units = "degrees")
+
+wbt_wetness_index(sca = "../outputs/TWI_Input/flowaccumulation.tif",
+                  slope = "../outputs/TWI_Input/demslope.tif",
+                  output = "../outputs/TWI_Input/TWI_N64W154.tif")
+
+TWI <- raster("../outputs/TWI_Input/TWI_fisl_lc.tif")
+
+tm_shape(TWI)+
+  tm_raster(style = "cont",palette = "PuOr")
+
+```
+
+
+
+```{r}
+library(terra)
+library(whitebox)
+library(tmap)
+library(fs)
+```
+
+```{r}
+whitebox::wbt_init(exe_path = '/Users/annatalucci/Library/Applications/WhiteboxTools_darwin_m_series')
+```
+
+```{r}
+process_twi_pipeline <- function(dem_path, out_dir = "../outputs/TWI_Input/") {
+  dem_name <- path_ext_remove(path_file(dem_path))
+  dir_create(out_dir)
+
+  # Read DEM
+  dem <- rast(dem_path)
+
+  # Optional: mask low elevations (<457.2 m = 1500 ft)
+  dem[dem < 457.2] <- NA
+
+  dem_out <- file.path(out_dir, paste0(dem_name, "_dem.tif"))
+  writeRaster(dem, dem_out, overwrite = TRUE)
+
+  # Hillshade
+  wbt_hillshade(dem = dem_out,
+                output = file.path(out_dir, paste0(dem_name, "_hillshade.tif")),
+                azimuth = 115)
+
+  # Breach and fill
+  breached <- file.path(out_dir, paste0(dem_name, "_breached.tif"))
+  filled   <- file.path(out_dir, paste0(dem_name, "_filled_breached.tif"))
+  wbt_breach_depressions_least_cost(dem = dem_out, output = breached, dist = 5, fill = TRUE)
+  wbt_fill_depressions_wang_and_liu(dem = breached, output = filled)
+
+  # D8 Flow accumulation
+  d8 <- file.path(out_dir, paste0(dem_name, "_flowaccum.tif"))
+  wbt_d8_flow_accumulation(input = filled, output = d8)
+
+  # Slope
+  slope <- file.path(out_dir, paste0(dem_name, "_slope.tif"))
+  wbt_slope(dem = filled, output = slope, units = "degrees")
+
+  # TWI
+  twi_out <- file.path(out_dir, paste0(dem_name, "_TWI.tif"))
+  wbt_wetness_index(sca = d8, slope = slope, output = twi_out)
+
+  return(twi_out)
+}
+
+```
+
+```{r}
+# List all .tif DEM files
+dem_files <- dir("../outputs/twi/", pattern = "\\.tif$", full.names = TRUE)
+
+# Process each DEM
+twi_outputs <- purrr::map_chr(dem_files, process_twi_pipeline)
+```

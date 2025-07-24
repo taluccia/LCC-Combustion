@@ -1,0 +1,174 @@
+---
+title: "Combustion Model Predictors"
+author: "Anna Talucci"
+date: "2025-06-23"
+output: html_document
+---
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+```{r}
+fisl_oldrdnbr = read_csv("../outputs/LCC_cleaned/csv/2025-07-07_FISL_oldrdnbr.csv")
+lc_oldrdnbr = read_csv("../outputs/LCC_cleaned/csv/2025-07-07_LC_oldrdnbr.csv")
+```
+
+
+```{r}
+fisl = read_csv("../outputs/LCC_cleaned/csv/2025-07-02_FISL_forModel.csv")
+lc = read_csv("../outputs/LCC_cleaned/csv/2025-07-02_LC_forModel.csv")
+org = read_csv("../data/combustion_predictors/all_predictors.csv")
+```
+
+## New FWI data for Org
+
+```{r}
+org_fwi = read_csv("../outputs/LCC_cleaned/csv/2025-07-02_Org_fwi.csv")
+```
+```{r}
+org_rdnbr = read_csv("../outputs/LCC_cleaned/csv/2025-07-03_ORG_rdnbr.csv")
+```
+
+# view
+
+```{r}
+fisl_oldrdnbr
+lc_oldrdnbr
+```
+
+```{r}
+fisl
+lc
+org
+```
+
+# Subout old FWI and rdnbr and add Copernicus FWI and update rdnbr
+
+```{r}
+org
+org_rdnbr
+org_fwi
+```
+
+```{r}
+(org_df = org %>% 
+  rename(bui_old = BUI, dc_old = DC, dmc_old = DMC, ffmc_old = FFMC, fwi_old = FWI, isi_old=ISI, dsr_old = DSR, rdnbr_old=rdnbr ) %>%
+  full_join(., org_rdnbr, by="id") %>%
+  full_join(., org_fwi, by= "id")
+)
+
+```
+
+## Data checks (missing data)
+
+```{r}
+org %>% drop_na()
+```
+```{r}
+#org_df %>% filter(burn_year == "2006")
+sort(unique(org$burn_year))
+```
+
+```{r}
+( org_missing_rdnbr = org_df %>% select(id, above.carbon.combusted, below.ground.carbon.combusted, burn_year, project.name, latitude, longitude,  rdnbr_old, rdnbr, dNBR))
+( org_missing_fwi = org_df %>% select(id, above.carbon.combusted, below.ground.carbon.combusted, burn_year, project.name, latitude, longitude,  bui_old:isi_old, BUI:DSR))
+
+```
+
+```{r}
+(missingrdnbr = org_missing_rdnbr %>% drop_na(dNBR) )
+
+sort(unique(missingrdnbr$burn_year))
+```
+
+```{r}
+org_missing_fwi %>% drop_na(FWI)
+
+```
+
+# Org Data drop old columns
+
+```{r}
+(org_df_update = org_df %>% select(-contains("old")) %>% select(-contains(".y")) %>% select(-burn_yr, -date) %>% rename(DOB_lst = DOB_lst.x) )
+```
+
+# Old Rdnbr
+
+```{r}
+fisl_oldrdnbr = fisl_oldrdnbr %>% rename(id = ID)
+lc_oldrdnbr = lc_oldrdnbr %>%  rename(id = ID)
+```
+
+```{r}
+(org_oldrdnbr = org_df %>% select(id, rdnbr_old) )
+```
+
+```{r}
+( old_rdnbr = bind_rows(fisl_oldrdnbr, lc_oldrdnbr, org_oldrdnbr) )
+```
+
+
+# Final clean to combine
+
+```{r}
+(fisl_df = fisl %>% 
+  rename(latitude = lat, longitude = lon, burn_year = fireYr, Date = date,  id = ID) %>%
+  mutate(project.name = "FISL") %>%
+   select(-burn.depth)
+)
+  
+```
+
+```{r}
+(lc_df = lc %>% 
+  rename(latitude = lat, longitude = lon, burn_year = fireYr, Date = date, id = ID) %>%
+  mutate(project.name = "LC") %>%
+   select(-burn.depth, -total_c_combusted)
+)
+  
+```
+
+# Check column differences
+
+```{r}
+setdiff(names(org_df_update), names(fisl_df))
+setdiff(names(fisl_df), names(org_df_update))
+```
+
+```{r}
+setdiff(names(org_df_update), names(lc_df))
+setdiff(names(lc_df), names(org_df_update))
+```
+
+# Combine LC and FISL
+
+```{r}
+(df = bind_rows(org_df_update, fisl_df, lc_df))  %>%
+  full_join(., old_rdnbr, by="id") 
+```
+
+
+```{r}
+df %>% drop_na()
+```
+
+
+# Save predictors
+
+```{r}
+write_csv(df, "../outputs/CombustionModelPredictors/2025-07-07_LC_FISL_Original_combustionModelPredictors.csv")
+```

@@ -1,0 +1,91 @@
+---
+title: "TWI Calculations in parallel"
+author: "Anna Talucci"
+date: "2025-07-21"
+output: html_document
+---
+
+# Overview
+
+## Load packages
+
+```{r}
+library(terra)
+library(raster)
+library(tmap)
+library(whitebox)
+library(furrr)
+library(fs)
+
+plan(multisession, workers = parallel::detectCores() - 1)
+
+```
+
+```{r}
+dir("../outputs/twi/", pattern = "\\.tif$", full.names = TRUE)
+```
+process_dem_to_twi <- function(dem_path) {
+  dem_name <- path_ext_remove(path_file(dem_path))
+  base_dir <- "../outputs/TWI_Input/"
+  
+  # Ensure output directory exists
+  dir_create(base_dir)  # or use dir.create(base_dir, recursive = TRUE)
+
+  dem_out <- file.path(base_dir, paste0(dem_name, "_dem.tif"))
+
+  # Only copy if the source file exists
+  if (!file_exists(dem_path)) {
+    stop(paste("DEM not found:", dem_path))
+  }
+
+  file_copy(dem_path, dem_out, overwrite = TRUE)
+```{r}
+process_dem_to_twi <- function(dem_path) {
+  dem_name <- path_ext_remove(path_file(dem_path))
+  base_dir <- "../outputs/TWI_Input/"
+  dir_create(base_dir)
+
+  dem_out <- file.path(base_dir, paste0(dem_name, "_dem.tif"))
+  file_copy(dem_path, dem_out, overwrite = TRUE)
+
+  # Preprocess
+  dem <- rast(dem_out)
+  # Optional: mask low elevations (if needed)
+  # dem[dem < 457.2] <- NA  # 1500 ft in meters
+
+  writeRaster(dem, dem_out, overwrite = TRUE)
+
+  # Hillshade (optional)
+  wbt_hillshade(dem_out, file.path(base_dir, paste0(dem_name, "_hillshade.tif")), azimuth = 115)
+
+  # Breach and fill
+  breached <- file.path(base_dir, paste0(dem_name, "_breached.tif"))
+  filled <- file.path(base_dir, paste0(dem_name, "_filled_breached.tif"))
+  wbt_breach_depressions_least_cost(dem_out, breached, dist = 5, fill = TRUE)
+  wbt_fill_depressions_wang_and_liu(breached, filled)
+
+  # Flow accumulation (D8)
+  d8 <- file.path(base_dir, paste0(dem_name, "_flowaccum.tif"))
+  wbt_d8_flow_accumulation(filled, d8)
+
+  # Slope
+  slope <- file.path(base_dir, paste0(dem_name, "_slope.tif"))
+  wbt_slope(filled, slope, units = "degrees")
+
+  # TWI
+  twi <- file.path(base_dir, paste0(dem_name, "_TWI.tif"))
+  wbt_wetness_index(sca = d8, slope = slope, output = twi)
+
+  return(twi)
+}
+
+```
+
+```{r}
+dem_files <- dir_ls("../outputs/twi", glob = "*.tif")
+
+# Run in parallel
+twi_outputs <- future_map_chr(dem_files, process_dem_to_twi)
+
+```
+

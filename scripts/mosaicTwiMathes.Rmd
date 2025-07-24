@@ -1,0 +1,83 @@
+---
+title: "TWI Mathes Mosaic"
+author: "Anna Talucci"
+date: "2025-07-21"
+output: html_document
+---
+
+# Overview
+
+## Load Packages
+
+```{r}
+library(terra)
+```
+
+## Load data
+
+```{r}
+elevation_list = list.files("../data/fabdem_elevation_tif", pattern = "\\.tif$", full.names = TRUE)
+```
+
+
+```{r}
+elevation_list
+```
+
+```{r}
+# Read all rasters into a list of SpatRaster objects
+rasters_elev <- lapply(elevation_list, rast)
+```
+
+```{r}
+rasters_elev
+```
+
+```{r}
+# Mosaic the rasters into one image
+mosaic_elev <- do.call(mosaic, rasters_elev)
+
+```
+
+```{r}
+plot(mosaic_elev)
+```
+
+```{r}
+# Write it to a new file
+writeRaster(mosaic_elev, "../outputs/twi/elevation_fisl_lc.tif", overwrite = TRUE)
+```
+
+```{r}
+# Set the directory containing your raster tiles
+raster_dir <- "../data/twi_mathes"
+
+# List all raster files (e.g., .tif)
+raster_files <- list.files(raster_dir, pattern = "\\.tif$", full.names = TRUE)
+
+# Read all rasters into a list of SpatRaster objects
+raster_list <- lapply(raster_files, rast)
+
+# Get and print resolution for each
+res_list <- lapply(seq_along(raster_list), function(i) {
+  r <- raster_list[[i]]
+  cat("Raster", i, "(", basename(raster_files[i]), "): ", res(r), "\n")
+})
+
+# Choose the first raster as the template
+template <- raster_list[[1]]
+
+# Resample all rasters to the template
+aligned_rasters <- lapply(raster_list, function(r) {
+  if (!compareGeom(r, template, stopOnError = FALSE)) {
+    resample(r, template)
+  } else {
+    r
+  }
+})
+# Mosaic the rasters into one image
+mosaic_raster <- do.call(mosaic, raster_list)
+
+# Optional: write to file
+writeRaster(mosaic_raster, "../outputs/twi_mathes_mosaic.tif", overwrite = TRUE)
+```

@@ -1,0 +1,46 @@
+---
+title: "Explore FABDEM variables"
+author: "Anna Talucci"
+date: "2025-07-21"
+output: html_document
+---
+
+# Overview
+
+
+## Load packages
+
+```{r}
+library(tidyverse)
+```
+
+## Load Data
+
+```{r}
+lc_terrain = read_csv("../data/fabdem/staticTerrain_LC.csv")
+fisl_terrain= read_csv("../data/fabdem/staticTerrain_FISL.csv")
+```
+
+
+```{r}
+fisl_old = read_csv("../data/combustion_data_layers/FISL/static/staticTerrain_FISL.csv")
+```
+
+
+## Compare old and new calculations
+
+```{r}
+fisl_terrain %>% 
+  select(-`.geo`, -`system:index`) %>%
+  filter(ID %in% c("FISL_243", "FISL_244", "FISL_245", "FISL_246", "FISL_247"))
+```
+
+
+
+```{r}
+fisl_old %>% 
+  select(-`.geo`, -`system:index`) %>%
+  filter(ID %in% c("FISL_243", "FISL_244", "FISL_245", "FISL_246", "FISL_247")) %>%
+  mutate(slope_rad = slope * pi / 180, 
+         aspect_rad = aspect * pi / 180)
+```
