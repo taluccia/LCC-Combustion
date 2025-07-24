@@ -32,6 +32,9 @@ lcc = read_csv("../outputs/LCC_cleaned/csv/LCC_Site_cleaned_2025-04-16.csv")
 fisl = read_csv("../data/FiSL/FiSL_data_fires.csv")
 ```
 
+```{r}
+org = read_csv("../data/org_terrain/staticTerrain_ORG.csv")
+```
 
 # View Data
 
