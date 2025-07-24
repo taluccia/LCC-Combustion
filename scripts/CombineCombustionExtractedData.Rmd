@@ -4,6 +4,9 @@ author: "Anna Talucci"
 date: "2025-06-06"
 output: html_document
 ---
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
 
 # Overview
 
@@ -36,6 +39,10 @@ fisl_pts =st_read("../outputs/LCC_cleaned/points/shapefiles/fisl_pts_WGS84_2025-
 # CSV
 
 ## FISL
+```{r}
+fisl_oldrdnbr_list = list.files("../data/combustion_data_layers/FISL/old_rdnbr", pattern='.csv$', full.names = TRUE)
+fisl_oldrdnbr_list
+```
 
 ```{r}
 fisl_indices_list = list.files("../data/combustion_data_layers/FISL/indices", pattern='.csv$', full.names = TRUE)
@@ -70,6 +77,11 @@ fisl_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_Fisl_fwi_gfwed.
 ```
 
 ## LC
+
+```{r}
+lc_oldrdnbr_list = list.files("../data/combustion_data_layers/LC/old_rdnbr", pattern='.csv$', full.names = TRUE)
+lc_oldrdnbr_list
+```
 
 ```{r}
 lc_indices_list = list.files("../data/combustion_data_layers/LC/indices", pattern='.csv$', full.names = TRUE)
@@ -137,12 +149,22 @@ lcc_cna = read_csv("../data/combustion_data_layers/LCC/2025-06-02_climateNA_LCC_
 ```{r}
 lcc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
 ```
+
+## ORG
+
+```{r}
+org_indices_list = list.files("../data/combustion_data_layers/ORG/indices", pattern='.csv$', full.names = TRUE)
+org_indices_list
+```
+
 ## Field data
+
 ```{r}
 lc_field = read_csv("../outputs/LCC_cleaned/csv/LC_ID_2025-06-02.csv")
 lcc_field = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-06-02.csv")
 fisl_field = read_csv("../outputs/LCC_cleaned/csv/FISL_ID_2025-06-02.csv")
 ```
+
 # Read list of files 
 
 ## Functions for csv list
@@ -182,14 +204,24 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ( lc_dob = csv_rbind(lc_dob_list) ) 
 ( lcc_dob = csv_rbind(lcc_dob_list) ) 
 ```
+## old rdnbr
+
+```{r}
+( fisl_oldrdnbr = csv_rbind(fisl_oldrdnbr_list) ) 
+( lc_oldrdnbr = csv_rbind(lc_oldrdnbr_list) ) 
+```
 
 ## indices
+```{r}
+( org_indices = csv_rbind(org_indices_list) %>% select(id, rdnbr)) 
+```
 
 ```{r}
 ( fisl_indices = csv_rbind(fisl_indices_list) ) 
 ( lc_indices = csv_rbind(lc_indices_list) ) 
 ( lcc_indices = csv_rbind(lcc_indices_list) ) 
 ```
+
 
 ## tree cover
 
@@ -247,6 +279,15 @@ clean_cbind = function(df){
 ( lc_dob_clean = clean_rbind(lc_dob) )
 ( lcc_dob_clean = clean_rbind(lcc_dob) )
 ```
+
+## old rdnbr
+
+
+```{r}
+( fisl_oldrdnbr_clean = fisl_oldrdnbr %>% clean_rbind() %>% select(ID, rdnbr) %>% rename(rdnbr_old = rdnbr) )
+( lc_oldrdnbr_clean =  lc_oldrdnbr %>% clean_rbind() %>% select(ID, rdnbr) %>% rename(rdnbr_old = rdnbr) )
+```
+
 ## indices
 
 ```{r}
@@ -441,8 +482,17 @@ DSR
 
 
 ```{r}
-write_csv(lc_df1, "../outputs/LCC_cleaned/csv/2025-06-23_LC_forModel.csv")
-write_csv(fisl_df1, "../outputs/LCC_cleaned/csv/2025-06-23_FISL_forModel.csv")
+write_csv(lc_df1, "../outputs/LCC_cleaned/csv/2025-07-02_LC_forModel.csv")
+write_csv(fisl_df1, "../outputs/LCC_cleaned/csv/2025-07-02_FISL_forModel.csv")
+```
+
+```{r}
+write_csv(org_indices, "../outputs/LCC_cleaned/csv/2025-07-03_ORG_rdnbr.csv")
+```
+
+```{r}
+write_csv(fisl_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_FISL_oldrdnbr.csv")
+write_csv(lc_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_LC_oldrdnbr.csv")
 ```
 
 ## missing data for combustion variable data frames

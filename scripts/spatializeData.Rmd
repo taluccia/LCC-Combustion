@@ -189,6 +189,18 @@ mapview(fisl_pts_WGS84)
 
 # Save Spatial Data files
 
+## Geopackage
+
+```{r eval=FALSE, include=FALSE}
+st_write(lc_pts_WGS84, "../outputs/combustion_pts_gpkg/lc_pts_WGS84_2025-07-22.gpkg")
+
+st_write(lcc_pts_WGS84, "../outputs/combustion_pts_gpkg/lcc_pts_WGS84_2025-07-22.gpkg")
+
+st_write(fisl_pts_WGS84, "../outputs/combustion_pts_gpkg/fisl_pts_WGS84_2025-07-22.gpkg")
+```
+
+## shapefiles
+
 ```{r eval=FALSE, include=FALSE}
 st_write(lc_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/lc_pts_WGS84_2025-06-02.shp", driver="ESRI Shapefile")
 ```
