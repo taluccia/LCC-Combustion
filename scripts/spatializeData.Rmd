@@ -33,7 +33,7 @@ fisl = read_csv("../data/FiSL/FiSL_data_fires.csv")
 ```
 
 ```{r}
-org = read_csv("../data/org_terrain/staticTerrain_ORG.csv")
+org = read_csv("../data/2025-08-06_terrainEE/staticTerrain_ORG.csv")
 ```
 
 # View Data
@@ -43,6 +43,7 @@ lc
 lcc
 fisl
 ```
+
 ## Min max Lat/lon
 
 ```{r}
@@ -115,14 +116,16 @@ write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-06-02.csv")
 ( lc_3col = lc_id %>% 
     select(ID, latitude, longitude, recent_burn) %>% 
     rename(lat = latitude, lon = longitude, fireYr = recent_burn) %>%
-    mutate(fireYr = as.character(fireYr))
+    mutate(fireYr = as.character(fireYr))%>%
+    mutate(project_name = "LC")
 )
 ```
 
 ```{r}
 ( lcc_3col = lcc_id %>% 
     select(ID, latitude, longitude, year_of_burn) %>% 
-    rename(lat = latitude, lon = longitude, fireYr = year_of_burn)
+    rename(lat = latitude, lon = longitude, fireYr = year_of_burn)%>%
+    mutate(project_name = "LCC")
 )
 ```
 
@@ -130,10 +133,18 @@ write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-06-02.csv")
 ( fisl_3col = fisl_id %>% 
     select(ID, latitude, longitude, year) %>% 
     rename(lat = latitude, lon = longitude, fireYr = year) %>%
-    mutate(fireYr = as.character(fireYr))
+    mutate(fireYr = as.character(fireYr)) %>%
+    mutate(project_name = "FISL")
 )
 ```
 
+```{r}
+( org_subset = org %>% 
+  dplyr::select(id, lat, lon, prjct_n, fireYr) %>%
+  rename(ID=id, project_name = prjct_n) %>%
+  mutate(fireYr = as.character(fireYr))
+)
+```
 # Spatialize
 
 ## Function to spatialize
@@ -176,6 +187,14 @@ df_to_sf_NAD83 <- function(x){
 ```{r}
 sort(unique(fisl_pts_WGS84$fireYr))
 ```
+
+```{r}
+( org_pts_WGS84 = org_subset %>% 
+    #drop_na(latitude) %>%
+    df_to_sf_wgs84() 
+)
+```
+
 # View points
 
 ```{r}
@@ -190,16 +209,22 @@ mapview(lcc_pts_WGS84)
 mapview(fisl_pts_WGS84)
 ```
 
+```{r}
+mapview(org_pts_WGS84)
+```
+
 # Save Spatial Data files
 
 ## Geopackage
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lc_pts_WGS84, "../outputs/combustion_pts_gpkg/lc_pts_WGS84_2025-07-22.gpkg")
+st_write(lc_pts_WGS84, "../outputs/combustion_pts_gpkg/lc_pts_WGS84_2025-08-04.gpkg")
 
-st_write(lcc_pts_WGS84, "../outputs/combustion_pts_gpkg/lcc_pts_WGS84_2025-07-22.gpkg")
+st_write(lcc_pts_WGS84, "../outputs/combustion_pts_gpkg/lcc_pts_WGS84_2025-08-04.gpkg")
 
-st_write(fisl_pts_WGS84, "../outputs/combustion_pts_gpkg/fisl_pts_WGS84_2025-07-22.gpkg")
+st_write(fisl_pts_WGS84, "../outputs/combustion_pts_gpkg/fisl_pts_WGS84_2025-08-04.gpkg")
+
+st_write(org_pts_WGS84, "../outputs/combustion_pts_gpkg/org_pts_WGS84_2025-08-06.gpkg")
 ```
 
 ## shapefiles
