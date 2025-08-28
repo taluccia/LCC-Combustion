@@ -1,0 +1,109 @@
+---
+title: "Organize TWI"
+author: "Anna Talucci"
+date: "2025-08-21"
+output: html_document
+---
+
+
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Combine revised terrain metrics
+
+
+color help
+http://vrl.cs.brown.edu/color
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+# Data
+
+## plot list
+
+```{r}
+org_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_ORG_subsetID.csv")
+lc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LC_subsetID.csv")
+lcc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LCC_subsetID.csv")
+fisl_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_FISL_subsetID.csv")
+```
+
+## TWI
+
+```{r}
+twi_list = list.files(path="../data/2025-08-08_combustion_layer_update/TWI_Extracts", pattern='*.csv', full.names = TRUE)
+twi_list08 = list.files(path="../data/2025-08-08_TWI_Extracts", pattern='*.csv', full.names = TRUE)
+twi_list07 = list.files(path="../data/2025-08-07_TWI_Extracts", pattern='*.csv', full.names = TRUE)
+twi_list06 = list.files(path="../data/2025-08-06_TWI_Extracts", pattern='*.csv', full.names = TRUE)
+```
+
+## terrain metrics
+
+```{r}
+fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_FISL.csv")
+lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LC.csv")
+lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LCC.csv")
+org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_ORG.csv")
+```
+
+```{r}
+mathes_twi_a = read_csv("../data/twi_csv_mathes/FABDEM_StaticTerrain_OldData_aboveground.csv")
+mathes_twi_b = read_csv("../data/twi_csv_mathes/FABDEM_StaticTerrain_OldData_belowground.csv")
+```
+
+# Read and combine data frame list
+
+```{r eval=FALSE, include=FALSE}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, read_csv)
+  return(csv_data)
+}
+
+```
+
+```{r}
+csv_rbind <- function(file_list) {
+  df <- file_list %>%
+  map_dfr(~ read_csv(.x) %>%
+            select(-any_of("fireYr")) %>%
+            mutate(source_file = basename(.x)))
+  return(df)
+}
+```
+
+
+```{r}
+twi= csv_rbind(twi_list)
+twi06= csv_rbind(twi_list06)
+twi07= csv_rbind(twi_list07)
+```
+
+```{r}
+# Check duplicate ID
+twi %>%
+  group_by(ID) %>%
+  filter(n() > 1) %>%
+  ungroup()
+
+twi06 %>%
+  group_by(ID) %>%
+  filter(n() > 1) %>%
+  ungroup()
+
+```
+
+## Split into projects
+
+```{r}
+unique(twi$project_name)
+```
