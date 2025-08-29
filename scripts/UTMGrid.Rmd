@@ -1,0 +1,64 @@
+---
+title: "UTM Grid"
+author: "Anna Talucci"
+date: "2025-08-27"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+
+
+# Packages
+
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(sf)
+library(mapview)
+```
+
+
+# Data
+
+## Grid
+
+```{r}
+utmGrid = st_read("../data/World_UTM_Grid/World_UTM_Grid.shp")
+```
+
+## Points
+
+```{r}
+lc_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-28_lc_full_pts_WGS84.shp")
+
+lcc_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-28_lcc_full_pts_WGS84.shp")
+
+fisl_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-28_fisl_full_pts_WGS84.shp")
+
+org_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-28_org_full_pts_WGS84.shp")
+```
+
+# View Data
+
+```{r}
+utmGrid
+```
+
+# Check if CRS match
+
+```{r}
+st_crs(utmGrid) == st_crs(lc_full)
+st_crs(utmGrid) == st_crs(lcc_full)
+st_crs(utmGrid) == st_crs(fisl_full)
+st_crs(utmGrid) == st_crs(org_full)
+```
+# Spatial overlay
+
+
+```{r}
+( lcc_joined <- st_join(st_make_valid(lcc_full), st_make_valid(utmGrid)) )
+```
