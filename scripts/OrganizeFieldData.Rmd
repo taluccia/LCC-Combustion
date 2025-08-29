@@ -1,0 +1,274 @@
+---
+title: "Field data organize"
+author: "Anna Talucci"
+date: "2025-08-21"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Use cleaned qaqc data from `ExploreData.Rmd` in Repo LCC-SpatialData to generate unique row ids and subset data for field data with measured combustion values for training the combustion model. Update 8-21-25
+
+
+# Packages
+
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(sf)
+library(mapview)
+```
+
+
+# Data
+
+```{r}
+lc = read_csv("../outputs/LCC_cleaned/csv/LC_Plot_cleaned_2025-04-16.csv")
+lcc = read_csv("../outputs/LCC_cleaned/csv/LCC_Site_cleaned_2025-04-16.csv")
+fisl = read_csv("../data/FiSL/FiSL_data_fires.csv")
+org_depth = read_csv("../data/field/Combustion_SynthesisData_05042018_XJW.csv")
+org = read_csv("../data/combustion_predictors/all_predictors.csv")
+```
+
+# View Data
+
+```{r}
+lc
+lcc
+fisl
+org_depth
+org
+```
+
+## Check Min max Lat/lon
+
+```{r}
+lc %>% 
+  group_by(fire) %>%
+  summarise(min_lat = min(latitude),
+            max_lat = max(latitude),
+            min_lon = min(longitude),
+            max_lon = max(longitude))
+```
+
+```{r}
+lcc %>% 
+  group_by(study_area) %>%
+  summarise(min_lat = min(latitude),
+            max_lat = max(latitude),
+            min_lon = min(longitude),
+            max_lon = max(longitude)) %>%
+  arrange(min_lon)
+
+```
+
+```{r}
+fisl %>% 
+  summarise(min_lat = min(latitude),
+            max_lat = max(latitude),
+            min_lon = min(longitude),
+            max_lon = max(longitude))
+```
+```{r}
+org %>% 
+  summarise(min_lat = min(latitude),
+            max_lat = max(latitude),
+            min_lon = min(longitude),
+            max_lon = max(longitude))
+```
+
+## Check missing combustion calculations
+
+```{r}
+lc
+lcc
+fisl
+org_depth
+org
+```
+
+```{r}
+lc %>% select(fire, site, plot,combustion_above, burn_depth, total_c_combusted) %>% filter(if_any(c(combustion_above, burn_depth, total_c_combusted), is.na))
+```
+
+```{r}
+fisl %>% select(fire_scar, site, plot, comb.trees, comb.depth, comb.below) %>% filter(if_any(c(comb.trees, comb.depth, comb.below), is.na))
+```
+
+```{r}
+org %>% select(id, above.carbon.combusted, below.ground.carbon.combusted) %>% filter(if_any(c(above.carbon.combusted,  below.ground.carbon.combusted), is.na))
+```
+
+```{r}
+org %>% select(id, above.carbon.combusted,below.ground.carbon.combusted) %>% filter(is.na(above.carbon.combusted))
+```
+
+
+```{r}
+org %>% select(id, above.carbon.combusted, below.ground.carbon.combusted) %>% filter(is.na(below.ground.carbon.combusted))
+```
+# Add unique ID and select columns for spatial data
+
+```{r}
+set.seed(56)
+
+lcc_id = lcc %>% 
+  mutate(project = "LCC", 
+         ID = paste0(project, "_", row_id )) %>%
+  relocate(ID, project, row_id) %>%
+  select(-`...1`) 
+
+lc_id = lc %>% 
+  mutate(project = "LC", 
+         ID = paste0(project, "_", row_id )) %>%
+  relocate(ID, project, row_id) %>%
+  select(-`...1`)
+
+
+fisl_id = fisl %>% 
+  mutate(project = "FISL", 
+         row_id = row_number(),
+         ID = paste0(project, "_", row_id )) %>%
+  relocate(ID, project, row_id) 
+
+```
+
+## Save full dataframe with ID to csv
+
+```{r}
+write_csv(lc_id, "../outputs/LCC_cleaned/csv/LC_ID_2025-08-21.csv")
+write_csv(lcc_id, "../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
+write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-08-21.csv")
+```
+
+## Explore missing Combustion and fire years before 2001
+
+```{r}
+fisl_id %>% 
+  filter(!if_any(c(comb.trees, comb.depth, comb.below), is.na)) %>%
+  filter(year >2000)
+```
+```{r}
+lc_id %>% 
+  filter(!if_any(c(combustion_above, burn_depth, total_c_combusted), is.na)) %>%
+  filter(recent_burn >2000)
+```
+
+```{r}
+org %>% 
+  filter(!if_all(c(above.carbon.combusted, below.ground.carbon.combusted), is.na)) %>%
+  filter(as.numeric(burn_year) >2000)
+```
+
+fisl n= 311
+lc n= 555
+org n = 920
+
+## Subset data for field combustion metrics columns to ID, lat, Lon, 
+
+### LC Full Data Set
+n=555
+no missing data for combustion calculations
+all burn years greater than 2001 
+
+```{r}
+( lc_full = lc_id %>% 
+    select(ID, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted) %>%
+    mutate(below.ground.carbon.combusted = total_c_combusted - combustion_above) %>%
+    rename(lat = latitude, lon = longitude, fireYr = recent_burn, above.carbon.combusted = combustion_above,  burn.depth=burn_depth) %>%
+    mutate(fireYr = as.character(fireYr),
+           project_name = "LC") %>%
+    select(-total_c_combusted) %>%
+    relocate(ID, project_name)
+)
+```
+
+### Fisl Full Data Set
+n=311
+no missing data for combustion calculations
+all burn years greater than 2001 
+
+
+```{r}
+( fisl_full = fisl_id %>% 
+    select(ID, latitude, longitude, year, comb.trees, comb.depth, comb.below) %>%
+  filter(!if_any(c(comb.trees, comb.depth, comb.below), is.na)) %>%
+    rename(lat = latitude, lon = longitude, fireYr = year, above.carbon.combusted = comb.trees, below.ground.carbon.combusted = comb.below, burn.depth=comb.depth) %>%
+    mutate(fireYr = as.character(fireYr)) %>%
+    mutate(project_name = "FISL") %>%
+    relocate(ID, project_name)
+)
+```
+### Org Full and subset Data Set
+Full Data n=1011
+drop missing data for combustion calculations (if NA for all 3) and drop burn years before 2001 n = 920
+
+```{r}
+org_depth_select = org_depth %>% select(id, burn.depth) %>% rename(ID=id)
+```
+
+```{r}
+org
+```
+
+```{r}
+( org_full = org %>% 
+    dplyr::select(id, latitude, longitude, project.name, burn_year, above.carbon.combusted, below.ground.carbon.combusted) %>% 
+    rename(ID=id, lat= latitude, lon = longitude, project_name = project.name, fireYr = burn_year) %>%
+    left_join(org_depth_select, by = "ID") %>%
+    relocate(ID, project_name)
+)
+```
+
+
+```{r}
+( org_subset = org_full %>% 
+  filter(!if_all(c(above.carbon.combusted, burn.depth, below.ground.carbon.combusted), is.na)) %>%
+  filter(as.numeric(fireYr) >2000) 
+)
+```
+### Org Full and subset Data Set
+Full Data n=110
+drop missing data for combustion calculations (if NA for all 3) and drop burn years before 2001 n = 102
+
+
+```{r}
+( lcc_full = lcc_id %>% 
+    select(ID, latitude, longitude, year_of_burn) %>% 
+    rename(lat = latitude, lon = longitude, fireYr = year_of_burn) %>%
+    mutate(project_name = "LCC") %>%
+    relocate(ID, project_name)
+)
+```
+
+```{r}
+( lcc_subset = lcc_full %>% 
+    filter(as.numeric(fireYr) >2000)     )
+```
+
+# Check 
+
+```{r}
+lc_full
+lcc_full
+lcc_subset
+fisl_full
+org_full
+org_subset
+```
+
+
+# Save as csv
+
+```{r}
+write_csv(org_full, "../outputs/LCC_cleaned/csv/2025-08-28_ORG_fullCombustionID.csv")
+write_csv(org_subset, "../outputs/LCC_cleaned/csv/2025-08-28_ORG_subsetCombustionID.csv")
+write_csv(lc_full, "../outputs/LCC_cleaned/csv/2025-08-28_LC_fullCombustionID.csv")
+write_csv(lcc_full, "../outputs/LCC_cleaned/csv/2025-08-28_LCC_fullCombustionID.csv")
+write_csv(lcc_subset, "../outputs/LCC_cleaned/csv/2025-08-28_LCC_subsetCombustionID.csv")
+write_csv(fisl_full, "../outputs/LCC_cleaned/csv/2025-08-28_FISL_fullCombustionID.csv")
+```
+
