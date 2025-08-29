@@ -131,23 +131,25 @@ lc_dfs <- list(lc_fwi_sub, lc_gfwed_sub)
 lcc_dfs <- list(lcc_fwi_sub, lcc_gfwed_sub)
 ```
 
+
+
 ```{r}
-( fisl <- reduce(fisl_dfs, full_join, by = "ID") %>% drop_na())
-( lc <- reduce(lc_dfs, full_join, by = "ID") %>% drop_na())
-( lcc <- reduce(lcc_dfs, full_join, by = "ID") %>% drop_na())
+( fisl <- reduce(fisl_dfs, full_join, by = "ID") )
+( lc <- reduce(lc_dfs, full_join, by = "ID") )
+( lcc <- reduce(lcc_dfs, full_join, by = "ID") )
 ```
 
 
 # Save
 
 ```{r}
-write_csv(org_fwi_sub, "../outputs/LCC_cleaned/csv/2025-07-02_Org_fwi.csv")
+write_csv(org_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Org_fwi.csv")
 ```
 
 ```{r}
-write_csv(fisl, "../outputs/LCC_cleaned/csv/2025-06-23_Fisl_fwi_gfwed.csv")
-write_csv(lc, "../outputs/LCC_cleaned/csv/2025-06-23_LC_fwi_gfwed.csv")
-write_csv(lcc, "../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
+write_csv(fisl, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Fisl_fwi_gfwed.csv")
+write_csv(lc, "../outputs/2025-08-18_cleaned/csv/2025-08-18_LC_fwi_gfwed.csv")
+write_csv(lcc, "../outputs/2025-08-18_cleaned/csv/2025-08-18_LCC_fwi_gfwed.csv")
 ```
 
 

@@ -32,19 +32,16 @@ library(tidyverse)
 ## plot list
 
 ```{r}
-org_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_ORG_subsetID.csv")
-lc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LC_subsetID.csv")
-lcc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LCC_subsetID.csv")
-fisl_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_FISL_subsetID.csv")
+org_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_ORG_fullCombustionID.csv")
+lc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LC_fullCombustionID.csv")
+lcc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LCC_fullCombustionID.csv")
+fisl_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_FISL_fullCombustionID.csv")
 ```
 
 ## TWI
 
 ```{r}
-twi_list = list.files(path="../data/2025-08-08_combustion_layer_update/TWI_Extracts", pattern='*.csv', full.names = TRUE)
-twi_list08 = list.files(path="../data/2025-08-08_TWI_Extracts", pattern='*.csv', full.names = TRUE)
-twi_list07 = list.files(path="../data/2025-08-07_TWI_Extracts", pattern='*.csv', full.names = TRUE)
-twi_list06 = list.files(path="../data/2025-08-06_TWI_Extracts", pattern='*.csv', full.names = TRUE)
+twi_list = list.files(path="../data/twi_utm_extracted", pattern='*.csv', full.names = TRUE)
 ```
 
 ## terrain metrics
@@ -83,9 +80,8 @@ csv_rbind <- function(file_list) {
 
 
 ```{r}
-twi= csv_rbind(twi_list)
-twi06= csv_rbind(twi_list06)
-twi07= csv_rbind(twi_list07)
+( twi= csv_rbind(twi_list) )
+
 ```
 
 ```{r}
@@ -95,15 +91,43 @@ twi %>%
   filter(n() > 1) %>%
   ungroup()
 
-twi06 %>%
-  group_by(ID) %>%
-  filter(n() > 1) %>%
-  ungroup()
+
 
 ```
 
 ## Split into projects
 
 ```{r}
-unique(twi$project_name)
+unique(twi$prjct_n)
+```
+
+
+```{r}
+( twi_clean = twi %>% select(ID, b1, prjct_n) %>% rename(twi=b1, project_name = prjct_n) )
+```
+
+
+```{r}
+( fisl_twi = twi_clean %>% filter(project_name=="FISL") %>% distinct(ID, .keep_all = TRUE))
+( lc_twi = twi_clean %>% filter(project_name=="LC") %>% distinct(ID, .keep_all = TRUE) )
+( lcc_twi = twi_clean %>% filter(project_name=="LCC") %>% distinct(ID, .keep_all = TRUE) )
+( org_twi = twi_clean %>% filter(project_name %in% c("NWT_BCKE", "NWT_MackWalker", "CAN_deGroot", "SK_RTJ", "JFSP_Boby", "AK_KT", "AK_Rogers", "Hoy_AK")) %>% distinct(ID, .keep_all = TRUE) )
+```
+
+
+```{r}
+( lc_df = lc_plots %>% left_join(lc_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
+( lcc_df = lcc_plots %>% left_join(lcc_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
+( fisl_df = fisl_plots %>% left_join(fisl_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
+( org_df = org_plots %>% left_join(org_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
+```
+
+
+# Check for missing data
+
+```{r}
+lc_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
+fisl_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
+lcc_df %>% filter(if_any(c( twi), is.na))
+org_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
 ```

@@ -115,40 +115,6 @@ lc_cna = read_csv("../data/combustion_data_layers/LC/2025-06-02_climateNA_LC_Nor
 lc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LC_fwi_gfwed.csv")
 ```
 
-## LCC
-
-```{r}
-lcc_indices_list = list.files("../data/combustion_data_layers/LCC/indices", pattern='.csv$', full.names = TRUE)
-lcc_indices_list
-```
-
-```{r}
-lcc_tct_list = list.files("../data/combustion_data_layers/LCC/tct", pattern='.csv$', full.names = TRUE)
-lcc_tct_list
-```
-
-```{r}
-lcc_treecover_list = list.files("../data/combustion_data_layers/LCC/treecover", pattern='.csv$', full.names = TRUE)
-lcc_treecover_list
-```
-
-```{r}
-lcc_static_list = list.files("../data/combustion_data_layers/LCC/static", pattern='.csv$', full.names = TRUE)
-lcc_static_list
-```
-
-```{r}
-lcc_dob_list = list.files("../data/combustion_data_layers/LCC/dob", pattern='.csv$', full.names = TRUE)
-lcc_dob_list
-```
-
-```{r}
-lcc_cna = read_csv("../data/combustion_data_layers/LCC/2025-06-02_climateNA_LCC_Normal_1981_2010MSY.csv")
-```
-
-```{r}
-lcc_fwi_gfwed = read_csv("../outputs/LCC_cleaned/csv/2025-06-23_LCC_fwi_gfwed.csv")
-```
 
 ## ORG
 
@@ -161,7 +127,7 @@ org_indices_list
 
 ```{r}
 lc_field = read_csv("../outputs/LCC_cleaned/csv/LC_ID_2025-06-02.csv")
-lcc_field = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-06-02.csv")
+
 fisl_field = read_csv("../outputs/LCC_cleaned/csv/FISL_ID_2025-06-02.csv")
 ```
 
@@ -202,14 +168,9 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ```{r}
 ( fisl_dob = csv_rbind(fisl_dob_list) ) 
 ( lc_dob = csv_rbind(lc_dob_list) ) 
-( lcc_dob = csv_rbind(lcc_dob_list) ) 
-```
-## old rdnbr
 
-```{r}
-( fisl_oldrdnbr = csv_rbind(fisl_oldrdnbr_list) ) 
-( lc_oldrdnbr = csv_rbind(lc_oldrdnbr_list) ) 
 ```
+
 
 ## indices
 ```{r}
@@ -219,7 +180,7 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ```{r}
 ( fisl_indices = csv_rbind(fisl_indices_list) ) 
 ( lc_indices = csv_rbind(lc_indices_list) ) 
-( lcc_indices = csv_rbind(lcc_indices_list) ) 
+
 ```
 
 
@@ -228,7 +189,7 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ```{r}
 ( fisl_treecover = csv_rbind(fisl_treecover_list) ) 
 ( lc_treecover = csv_rbind(lc_treecover_list) ) 
-( lcc_treecover = csv_rbind(lcc_treecover_list) ) 
+
 ```
 
 
@@ -237,7 +198,6 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ```{r}
 ( fisl_tct = csv_rbind(fisl_tct_list) ) 
 ( lc_tct = csv_rbind(lc_tct_list) ) 
-( lcc_tct = csv_rbind(lcc_tct_list) ) 
 ```
 
 # Static
@@ -245,7 +205,6 @@ csv_cbind <- function(file_list, id_col = "ID") {
 ```{r}
 ( fisl_static = csv_cbind(fisl_static_list))
 ( lc_static = csv_cbind(lc_static_list))
-( lcc_static = csv_cbind(lcc_static_list))
 ```
 
 
@@ -277,30 +236,24 @@ clean_cbind = function(df){
 ```{r}
 ( fisl_dob_clean = clean_rbind(fisl_dob) )
 ( lc_dob_clean = clean_rbind(lc_dob) )
-( lcc_dob_clean = clean_rbind(lcc_dob) )
+
 ```
 
-## old rdnbr
 
-
-```{r}
-( fisl_oldrdnbr_clean = fisl_oldrdnbr %>% clean_rbind() %>% select(ID, rdnbr) %>% rename(rdnbr_old = rdnbr) )
-( lc_oldrdnbr_clean =  lc_oldrdnbr %>% clean_rbind() %>% select(ID, rdnbr) %>% rename(rdnbr_old = rdnbr) )
-```
 
 ## indices
 
 ```{r}
 ( fisl_indices_clean = clean_rbind(fisl_indices) )
 ( lc_indices_clean = clean_rbind(lc_indices) )
-( lcc_indices_clean = clean_rbind(lcc_indices) )
+
 ```
 ## tct
 
 ```{r}
 ( fisl_tct_clean = clean_rbind(fisl_tct) )
 ( lc_tct_clean = clean_rbind(lc_tct) )
-( lcc_tct_clean = clean_rbind(lcc_tct) )
+
 ```
 
 ## treecover
@@ -308,7 +261,7 @@ clean_cbind = function(df){
 ```{r}
 ( fisl_treecover_clean = clean_rbind(fisl_treecover) )
 ( lc_treecover_clean = clean_rbind(lc_treecover) )
-( lcc_treecover_clean = clean_rbind(lcc_treecover) )
+
 ```
 
 ## static
@@ -316,7 +269,7 @@ clean_cbind = function(df){
 ```{r}
 ( fisl_static_clean = clean_cbind(fisl_static) )
 ( lc_static_clean = clean_cbind(lc_static) )
-( lcc_static_clean = clean_cbind(lcc_static) )
+
 ```
 
 ## CNA
@@ -347,16 +300,10 @@ clean_cna = function(df){
 ```
 
 
- %>%
-    rename(CNA_AHM=AHM, CNA_CMD=CMD, CNA_CMD_5_8 = CMD_sm, CNA_DD_0=DD_0, CNA_DD_18=DD_18, CNA_DD5=DD5, CNA_DD5_5_8=DD5_sm, CNA_EMT=EMT, CNA_Eref=Eref, CNA_Eref_5_8=Eref_sm, CNA_EXT=EXT, CNA_MAP=MAP, CNA_PAS=PAS, CNA_Rad_5_8=Rad_sm, CNA_SHM=SHM, CNA_Tmax_5_8=Tmax_sm, CNA_Tmin_5_8=Tmin_sm)
-    
-
-
-
 ```{r}
 (fisl_cna_clean = clean_cna(fisl_cna) )
 ( lc_cna_clean = clean_cna(lc_cna) )
-( lcc_cna_clean = clean_cna(lcc_cna) ) 
+
 ```
 ```{r}
 sort(names(fisl_cna_clean))
@@ -403,7 +350,6 @@ Tmin_5_8
 # Original point files as df
 ```{r}
 lc_field
-lcc_field
 fisl_field
 ```
 
@@ -424,7 +370,7 @@ below.ground.carbon.combusted
 ```{r}
 ( fisl_pts_df = fisl_pts %>% st_drop_geometry() )
 ( lc_pts_df = lc_pts %>% st_drop_geometry() )
-( lcc_pts_df = lcc_pts %>% st_drop_geometry() )
+
 ```
 
 # Combine orginal, static, indices, tct, and tree cover by project
@@ -452,7 +398,7 @@ combine_project_data  = function(pts, static, indices, tct, treecover, cna, fwi_
 
 ( lc_df = combine_project_data(lc_pts_df, lc_static_clean, lc_indices_clean, lc_tct_clean, lc_treecover_clean, lc_cna_clean, lc_fwi_gfwed) )
 
-( lcc_df = combine_project_data(lcc_pts_df, lcc_static_clean, lcc_indices_clean, lcc_tct_clean, lcc_treecover_clean, lcc_cna_clean, lcc_fwi_gfwed) )
+
 ```
 
 ## Add field data
@@ -490,10 +436,7 @@ write_csv(fisl_df1, "../outputs/LCC_cleaned/csv/2025-07-02_FISL_forModel.csv")
 write_csv(org_indices, "../outputs/LCC_cleaned/csv/2025-07-03_ORG_rdnbr.csv")
 ```
 
-```{r}
-write_csv(fisl_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_FISL_oldrdnbr.csv")
-write_csv(lc_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_LC_oldrdnbr.csv")
-```
+
 
 ## missing data for combustion variable data frames
 
@@ -501,8 +444,6 @@ write_csv(lc_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_LC_oldrdnbr.
 ( fisl_with_na <- fisl_df %>% filter(if_any(everything(), is.na)) )
 
 ( lc_with_na <- lc_df %>% filter(if_any(everything(), is.na)) )
-
-( lcc_with_na <- lcc_df %>% filter(if_any(everything(), is.na)) )
 ```
 
 # Missing data for DOB
@@ -514,7 +455,7 @@ write_csv(lc_oldrdnbr_clean, "../outputs/LCC_cleaned/csv/2025-07-07_LC_oldrdnbr.
 ```{r}
 n_distinct(fisl_df$ID)
 n_distinct(lc_df$ID)
-n_distinct(lcc_df$ID)
+
 ```
 
 ### show rows with na
