@@ -1,0 +1,151 @@
+---
+title: "Organize Climate Data"
+author: "Anna Talucci"
+date: "2025-08-18"
+output: html_document
+---
+
+
+
+# Overview
+
+Organize Climate data from Climate NA and Climate EU. 
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+# Data
+
+```{r}
+fisl_cna = read_csv("../data/combustion_data_layers/FISL/2025-06-02_climateNA_FISL_Normal_1981_2010MSY.csv")
+
+lc_cna = read_csv("../data/combustion_data_layers/LC/2025-06-02_climateNA_LC_Normal_1981_2010MSY.csv")
+
+lcc_ceu = read_csv("../data/2025-08-08_combustion_layer_update/Climate/2025-08-18_climateEU_LCC_Normal_1981_2010MSY.csv")
+
+lcc_cna = read_csv("../data/2025-08-08_combustion_layer_update/Climate/2025-06-02_climateNA_LCC_Normal_1981_2010MSY.csv")
+```
+
+# View data
+
+```{r}
+lcc_ceu
+```
+
+```{r}
+sort(names(lcc_ceu))
+```
+
+```{r}
+names(lcc_cna)
+```
+# Clean Data
+
+## Function
+
+```{r}
+clean_cna_old = function(df){
+  df %>% 
+  rename(ID = id1) %>%
+    select(ID, AHM, bFFP, CMD, CMD05, CMD06, CMD07, CMD08, DD_0, DD_0_05, DD_0_06, DD_0_07, DD_0_08, DD_18, DD18_05, DD18_06, DD18_07, DD18_08, DD18, DD18_sm, DD18_05, DD18_06, DD18_07, DD18_08, DD5, DD5_05, DD5_06, DD5_07, DD5_08, eFFP, EMT, Eref, Eref05, Eref06, Eref07, Eref08, EXT, FFP, MAP, MAR, MAT, MCMT, MSP, MWMT, NFFD, NFFD05, NFFD06, NFFD07, NFFD08, PAS, PAS05, PAS06, PAS07, PAS08, PPT05, PPT06, PPT07, PPT08, Rad05, Rad06, Rad07, Rad08, RH, RH05, RH06, RH07, RH08, SHM, Tave05, Tave06, Tave07, Tave08, TD, Tmax05, Tmax06, Tmax07, Tmax08, Tmin05, Tmin06, Tmin07, Tmin08) %>%
+    mutate(CMD_5_8 = ((CMD05 + CMD06 + CMD07 + CMD08)/4),
+           DD_0_5_8 = ((DD_0_05 + DD_0_06 + DD_0_07 + DD_0_08)/4),
+           DD_18_5_8 = ((DD18_05 + DD18_06 + DD18_07 + DD18_08)/4),
+           DD5_5_8 = ((DD5_05 + DD5_06 + DD5_07 + DD5_08)/4),
+           Eref_5_8 = ((Eref05 + Eref06 + Eref07 + Eref08)/4),
+           NFFD_5_8 = ((NFFD05 + NFFD06 + NFFD07 + NFFD08)/4),
+           PAS_5_8 = ((PAS05 + PAS06 + PAS07 + PAS08)/4),
+           PPT_5_8 = ((PPT05 + PPT06 + PPT07 + PPT08)/4),
+           Rad_5_8 = ((Rad05 + Rad06 + Rad07 + Rad08)/4), 
+           RH_5_8 = ((RH05 + RH06 + RH07 + RH08)/4),
+           Tave_5_8 = ((Tave05 + Tave06 + Tave07 + Tave08)/4),
+           Tmax_5_8 = ((Tmax05 + Tmax06 + Tmax07 + Tmax08)/4),
+           Tmin_5_8 = ((Tmin05 + Tmin06 + Tmin07 + Tmin08)/4)) %>%
+    select(-contains("05"), -contains("06"), -contains("07"), -contains("08")) %>%
+     dplyr::rename_with(~ paste("CNA", .x, sep = "_")) %>%
+    rename(ID = CNA_ID)
+}
+```
+select(ID,  AHM, bFFP, CMD, `DD<0`,DD<18"     "DD>18"     "DD>5"     
+ [8] "eFFP"      "Elevation" "EMT"       "Eref"      "FFP"       "id1"       "id2"      
+[15] "Latitude"  "Longitude" "MAP"       "MAT"       "MCMT"      "MSP"       "MWMT"     
+[22] "NFFD"      "PAS"       "PPT_at"    "PPT_sm"    "PPT_sp"    "PPT_wt"    "PPT01"    
+[29] "PPT02"     "PPT03"     "PPT04"     "PPT05"     "PPT06"     "PPT07"     "PPT08"    
+[36] "PPT09"     "PPT10"     "PPT11"     "PPT12"     "SHM"       "Tave_at"   "Tave_sm"  
+[43] "Tave_sp"   "Tave_wt"   "Tave01"    "Tave02"    "Tave03"    "Tave04"    "Tave05"   
+[50] "Tave06"    "Tave07"    "Tave08"    "Tave09"    "Tave10"    "Tave11"    "Tave12"   
+[57] "TD"        "Tmax_at"   "Tmax_sm"   "Tmax_sp"   "Tmax_wt"   "Tmax01"    "Tmax02"   
+[64] "Tmax03"    "Tmax04"    "Tmax05"    "Tmax06"    "Tmax07"    "Tmax08"    "Tmax09"   
+[71] "Tmax10"    "Tmax11"    "Tmax12"    "Tmin_at"   "Tmin_sm"   "Tmin_sp"   "Tmin_wt"  
+[78] "Tmin01"    "Tmin02"    "Tmin03"    "Tmin04"    "Tmin05"    "Tmin06"    "Tmin07"   
+[85] "Tmin08"    "Tmin09"    "Tmin10"    "Tmin11"    "Tmin12"  ) %>%
+
+"> greater than"
+"< less than"
+
+CNA_DD_0	degree-days below 0°C (chilling degree days)
+CNA_DD5	degree-days above 5°C (growing degree days)
+CNA_DD_18	degree-days below 18°C
+CNA_DD18	degree-days above 18°C
+
+PPT01, PPT02, PPT03, PPT04, PPT05, PPT06, PPT07, PPT08, PPT09, PPT10, PPT11, PPT12,
+Tave01, Tave02, Tave03, Tave04, Tave05, Tave06, Tave07, Tave08, Tave09, Tave10, Tave11, Tave12,
+Tmax01, Tmax02, Tmax03, Tmax04, Tmax05, Tmax06, Tmax07, Tmax08, Tmax09, Tmax10, Tmax11, Tmax12,
+Tmin01, Tmin02, Tmin03, Tmin04, Tmin05, Tmin06, Tmin07, Tmin08, Tmin09, Tmin10, Tmin11, Tmin12
+
+```{r}
+clean_ceu = function(df){
+  df %>% 
+  rename(ID = id1, DD_0=`DD<0`, DD_18=`DD<18`, DD18=`DD>18`, DD5 = `DD>5`) %>%
+    select(ID,  AHM, bFFP, CMD, DD_0, DD_18, DD18, DD5, eFFP, EMT, Eref, FFP, MAP, MAT, MCMT, MSP, MWMT, NFFD, PAS, PPT_at, PPT_sm, PPT_sp, PPT_wt,  SHM, Tave_at, Tave_sm, Tave_sp, Tave_wt,  TD, Tmax_at, Tmax_sm, Tmax_sp, Tmax_wt,  Tmin_at, Tmin_sm, Tmin_sp, Tmin_wt)
+}
+
+clean_cna = function(df){
+  df %>% 
+  rename(ID = id1) %>%
+    select(ID,  AHM, bFFP, CMD, DD_0, DD_18, DD18, DD5, eFFP, EMT, Eref, FFP, MAP, MAT, MCMT, MSP, MWMT, NFFD, PAS, PPT_at, PPT_sm, PPT_sp, PPT_wt,  SHM, Tave_at, Tave_sm, Tave_sp, Tave_wt,  TD, Tmax_at, Tmax_sm, Tmax_sp, Tmax_wt,  Tmin_at, Tmin_sm, Tmin_sp, Tmin_wt)
+}
+```
+
+## Clean dataframe variables
+
+```{r}
+(fisl_cna_clean = clean_cna(fisl_cna) )
+( lc_cna_clean = clean_cna(lc_cna) )
+( lcc_cna_clean = clean_cna(lcc_cna) )
+( lcc_ceu_clean = clean_ceu(lcc_ceu) )
+```
+# Combine LCC NA and EU to single data frame
+
+```{r}
+lcc_ceu_clean
+lcc_cna_clean
+```
+```{r}
+unique(lcc_ceu_clean$ID)
+```
+
+```{r}
+target_id = c("LCC_20", "LCC_21", "LCC_22", "LCC_23", "LCC_24", "LCC_25", "LCC_26", "LCC_27", "LCC_28", "LCC_29", "LCC_55", "LCC_56", "LCC_57", "LCC_58", "LCC_59", "LCC_60", "LCC_61", "LCC_62", "LCC_63", "LCC_64")
+```
+
+```{r}
+lcc_cna_clean %>% filter(ID %in% target_id)
+```
+```{r}
+( lcc_naonly = lcc_cna_clean %>% filter(AHM != -9999) )
+```
+```{r}
+( lcc_combine = bind_rows(lcc_naonly, lcc_ceu_clean) )
+```
+
+# Save DF as csv
+
+```{r}
+write_csv(fisl_cna_clean, "../outputs/2025-08-18_cleaned/csv/2025-08-20_Fisl_ClimateNormals.csv")
+write_csv(lc_cna_clean, "../outputs/2025-08-18_cleaned/csv/2025-08-20_LC_ClimateNormals.csv")
+write_csv(lcc_combine, "../outputs/2025-08-18_cleaned/csv/2025-08-20_LCC_ClimateNormals.csv")
+```

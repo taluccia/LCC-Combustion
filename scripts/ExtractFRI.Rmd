@@ -1,0 +1,149 @@
+---
+title: "ExtractFRIData"
+author: "Anna Talucci"
+date: "2025-08-22"
+output: html_document
+---
+
+
+
+# Overview
+
+
+## Load packages
+
+```{r}
+library(terra)
+library(sf)
+library(tidyverse)
+```
+
+## Data
+
+## FRI raster
+
+```{r}
+fri = rast("../data/FRI/fire_return_interval_combined_1972_2022_landcover.tif")
+```
+
+
+## LC and LCC points
+
+```{r}
+
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-21_lc_pts_WGS84.shp")
+
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-22_lcc_pts_all_WGS84.shp")
+```
+
+## View 
+
+```{r}
+lc_pts
+```
+
+## Check if crs match
+
+```{r}
+crs(fri) == crs(lc_pts)
+crs(fri) == crs(lcc_pts)
+```
+
+```{r}
+crs(fri)
+```
+
+```{r}
+lc_pts_proj = st_transform(lc_pts, crs=crs(fri)) %>% 
+  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id)
+
+lcc_pts_proj = st_transform(lcc_pts, crs=crs(fri)) %>%
+  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id)
+
+```
+
+```{r}
+lcc_pts_proj
+```
+```{r}
+crs(fri) == crs(lc_pts_proj)
+crs(fri) == crs(lcc_pts_proj)
+```
+
+# Sf to vect
+
+```{r}
+lc_vec = vect(lc_pts_proj)
+lcc_vec = vect(lcc_pts_proj)
+```
+
+# Extract pixel values at points
+
+
+```{r}
+# Extract values
+lc_vals <- extract(fri, lc_vec)
+
+# Join back: vals has an ID column matching row order in pts
+lc_pts_with_vals <- terra::cbind(lc_vec, lc_vals[ , -1])  # drop the ID column
+
+lc_pts_with_vals
+```
+
+
+# Extract values at points
+
+```{r}
+( vals_lc = extract(fri, lc_vec, xy=TRUE) )
+( vals_lcc = extract(fri, lcc_vec, xy=TRUE) )
+
+```
+
+# Join tx info to point extracted
+
+```{r}
+points_as_df = function(pts){
+  pts %>%
+    st_drop_geometry()
+}
+
+
+(lc_pts_df1 = lc_pts_proj %>% points_as_df() )
+(lcc_pts_df2 = lcc_pts_proj %>% points_as_df() )
+```
+
+
+```{r}
+join_clean_function <- function(df1, df2){df1 %>%
+    full_join(., df2, by=c("ID")) 
+   
+  }
+
+( lc_join = join_clean_function(vals_lc, lc_pts_df1) )
+( lcc_join = join_clean_function(vals_lcc, lcc_pts_df2) )
+
+```
+```{r}
+( lc_fri = lc_join %>% 
+  select(-ID) %>%
+  rename(fri = fire_return_interval_combined_1972_2022_landcover, ID=proj_ID) %>%
+  relocate(ID) %>%
+  select(ID, fri) )
+```
+
+```{r}
+( lcc_fri = lcc_join %>% 
+  select(-ID) %>%
+  rename(fri = fire_return_interval_combined_1972_2022_landcover, ID=proj_ID) %>%
+  relocate(ID) %>%
+  select(ID, fri) )
+```
+
+## Write to CSV
+
+```{r}
+write_csv(lc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
+write_csv(lcc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
+```
+
+**THE END**
