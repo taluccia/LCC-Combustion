@@ -26,29 +26,16 @@ library(tidyverse)
 ```
 
 
-# Data
-
-## plot list
+# Load csv data
 
 ```{r}
-org_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_ORG_subsetID.csv")
-lc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LC_subsetID.csv")
-lcc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_LCC_subsetID.csv")
-fisl_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-20_FISL_subsetID.csv")
+fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/2025-10-02_TerrainMetrics_FISL.csv")
+lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/2025-10-03_TerrainMetrics_LC.csv")
+lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-31_terrain/staticTerrain_LCC.csv")
+org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-31_terrain/staticTerrain_ORG.csv")
 ```
 
-
-
-## terrain metrics
-
-```{r}
-fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_FISL.csv")
-lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LC.csv")
-lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LCC.csv")
-org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_ORG.csv")
-```
-
-# View
+# View data frame
 
 ```{r}
 fisl
@@ -57,379 +44,36 @@ lcc
 org
 ```
 
-
-# Read and combine data frame list
-
-```{r eval=FALSE, include=FALSE}
-csv_rbind <- function(file_list) {
-  csv_data <- purrr::map_dfr(file_list, read_csv)
-  return(csv_data)
-}
-
-```
-
-```{r}
-csv_rbind <- function(file_list) {
-  df <- file_list %>%
-  map_dfr(~ read_csv(.x) %>%
-            select(-any_of("fireYr")) %>%
-            mutate(source_file = basename(.x)))
-  return(df)
-}
-```
-
-
-```{r}
-twi= csv_rbind(twi_list)
-twi06= csv_rbind(twi_list06)
-twi07= csv_rbind(twi_list07)
-```
-
-```{r}
-# Check duplicate ID
-twi %>%
-  group_by(ID) %>%
-  filter(n() > 1) %>%
-  ungroup()
-
-twi06 %>%
-  group_by(ID) %>%
-  filter(n() > 1) %>%
-  ungroup()
-
-```
-
-## Split into projects
-
-```{r}
-unique(twi$project_name)
-```
-
-```{r}
-( fisl_twi = twi %>% filter(project_name=="FISL") )
-( lc_twi = twi %>% filter(project_name=="LC") )
-( lcc_twi = twi %>% filter(project_name=="LCC") )
-( org_twi = twi %>% filter(project_name %in% c("CAN_deGroot", "SK_RTJ", "NWT_BCKE", "NWT_MackWalker", "AK_KT", "JFSP_Boby", "Hoy_AK", "AK_Rogers" )) )
-
-```
-
-```{r}
-( fisl_twi06 = twi06 %>% filter(project_name=="FISL") )
-( lc_twi06 = twi06 %>% filter(project_name=="LC") )
-( org_twi06 = twi06 %>% filter(project_name %in% c("CAN_deGroot", "SK_RTJ", "NWT_BCKE", "NWT_MackWalker", "AK_KT", "JFSP_Boby", "Hoy_AK", "AK_Rogers" )) )
-
-```
-```{r}
-( fisl_twi07 = twi07 %>% filter(project_name=="FISL") )
-( lc_twi07 = twi07 %>% filter(project_name=="LC") )
-( org_twi07 = twi07 %>% filter(project_name %in% c("CAN_deGroot", "SK_RTJ", "NWT_BCKE", "NWT_MackWalker", "AK_KT", "JFSP_Boby", "Hoy_AK", "AK_Rogers" )) )
-
-```
-
-
-
-## Pivot 
-
-```{r}
-pivot_fun <- function(df) {
-  df %>%
-    select(-source_file) %>%
-  pivot_longer(
-    cols = -c(ID, lat, lon, project_name),  # keep spatial or ID columns fixed
-    names_to = "raster_name",
-    values_to = "twi") %>%
-  drop_na(twi) %>%
-    filter(twi > 0)
-}
-
-```
-
-
-
-```{r}
-fisl_twi_clean = fisl_twi %>% pivot_fun()
-lcc_twi_clean = lcc_twi %>% pivot_fun()
-lc_twi_clean = lc_twi %>% pivot_fun()
-org_twi_clean = org_twi %>% pivot_fun()
-```
-
-```{r}
-fisl_twi06_clean = fisl_twi06 %>% pivot_fun()
-lc_twi06_clean = lc_twi06 %>% pivot_fun()
-org_twi06_clean = org_twi06 %>% pivot_fun()
-```
-
-```{r}
-fisl_twi07_clean = fisl_twi07 %>% pivot_fun()
-lc_twi07_clean = lc_twi07 %>% pivot_fun()
-org_twi07_clean = org_twi07 %>% pivot_fun()
-```
-
-```{r}
-fisl_twi_clean
-fisl_twi06_clean
-```
-
-```{r}
-lc_twi_clean 
-lc_twi06_clean
-```
-
-```{r}
-org_twi_clean
-org_twi06_clean
-```
-# Check Differences
-
-```{r}
-setdiff(lc_twi_clean$ID, lc_plots$ID)
-setdiff(lc_plots$ID, lc_twi_clean$ID)
-```
-
-```{r}
-setdiff(lcc_twi_clean$ID, lcc_plots$ID)
-setdiff(lcc_plots$ID, lcc_twi_clean$ID)
-```
-
-```{r}
-setdiff(org_twi_clean$ID, org_plots$ID)
-setdiff(org_plots$ID, org_twi_clean$ID)
-```
-
-```{r}
-setdiff(fisl_twi_clean$ID, fisl_plots$ID)
-setdiff(fisl_plots$ID, fisl_twi_clean$ID)
-```
-
-```{r}
-setdiff(lc_twi06_clean$ID, lc_twi_clean$ID)
-setdiff(lc_twi07_clean$ID, lc_twi_clean$ID)
-```
-
-```{r}
-setdiff(fisl_twi_clean$ID, fisl_twi06_clean$ID)
-setdiff(fisl_twi_clean$ID, fisl_twi07_clean$ID)
-setdiff(fisl_twi06_clean$ID, fisl_twi_clean$ID)
-setdiff(fisl_twi07_clean$ID, fisl_twi_clean$ID)
-```
-
-```{r}
-setdiff(org_twi_clean$ID, org_twi06_clean$ID)
-setdiff(org_twi_clean$ID, org_twi07_clean$ID)
-setdiff(org_twi06_clean$ID, org_twi_clean$ID)
-setdiff(org_twi07_clean$ID, org_twi_clean$ID)
-```
-
-```{r}
-df_list <- list(org_twi_clean, org_twi06_clean, org_twi07_clean)
-
-# Combine and keep one row per unique ID
-( org_combined <- bind_rows(df_list) %>%
-  distinct(ID, .keep_all = TRUE) )
-
-```
-
-# Mathes Data
-
-```{r}
-mathes_twi_a
-( mathes_twi = mathes_twi_b %>% 
-    select(id, TWI) %>%
-    rename(ID=id, twi_mathes = TWI)
-)
-```
-
-```{r}
-setdiff(org_combined$ID, mathes_twi$ID)
-setdiff(mathes_twi$ID, org_combined$ID)
-```
-
-```{r}
-# IDs missing from ORG TWI that can be filled with Mathes data
-target = c("sf.335", "sf.336", "sf.396", "sf.397", "sf.410", "sf.411", "sf.355", "sf.356", "sf.346", "sf.382", "sf.377", "sf.378", "sf.380", "sf.383", "sf.384", "sf.769", "sf.770", "sf.772", "sf.773", "sf.774", "sf.775", "sf.780", "sf.776", "sf.779", "sf.777", "sf.788", "sf.789", "sf.791", "sf.874", "sf.875", "sf.886", "sf.887", "sf.881", "sf.882", "sf.883", "sf.876", "sf.877", "sf.878", "sf.879", "sf.880", "sf.884", "sf.885")
-```
-
-
-```{r}
-mathes_twi %>% filter(ID %in% target)
-```
-
-## Check for Duplicate IDs
-
-```{r}
-(duplicates <- twi_combined%>%
-  group_by(ID) %>%
-  filter(n() > 1) %>%
-  ungroup())
-```
-
-
-## Summary Stats
-
-```{r}
-min(org_twi_clean$twi)
-max(org_twi_clean$twi)
-```
-
-```{r}
-min(mathes_twi_a$TWI)
-max(mathes_twi_a$TWI)
-```
-
-## Compare data sets
-
-```{r}
-
-(compare_df = org_twi_clean %>%
-    right_join(mathes_twi, by="ID") %>%
-   drop_na(twi_mathes) %>%
-   mutate(diff = twi-twi_mathes) %>%
-   filter(diff > 1 | diff < -1)
-)
-```
-
-```{r}
-unique(compare_df$ID)
-```
-
-## Plots
-
-```{r}
-ggplot(compare_df, aes(x=twi, y = twi_mathes)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-  theme_minimal()
-```
-
-```{r}
-ggplot(twi_combined, aes(x = twi)) +
-  geom_histogram( fill = "steelblue", color = "white") +
-  labs(title = "Histogram of TWI Values", x = "TWI", y = "Count") +
-  theme_minimal()
-
-```
-
-# Fill missing TWI data
-
-
-## Add ORG missing with Mathes
-```{r}
-( mathes_subset = mathes_twi_b %>%  
-    rename(ID=id, twi = TWI, lat = latitude, lon = longitude, project_name= project.name, fireYr= burn_year) %>%
-    filter(ID %in% target) %>%
-    select(ID, lat, lon, fireYr, project_name, twi)
-   )
-
-```
-
-```{r}
-
-( org_twi_add <- org_combined %>%
-    select(-raster_name) %>%
-    bind_rows(., mathes_subset)
-)
-```  
-
-
-## twi df
-
-```{r}
-lc_twi06_clean # use 8/6 data since it is not missing items
-fisl_twi07_clean
-org_twi_add
-```  
-
-
-
-# Combine all Terrain Variables
-
-```{r}
-fisl
-lc
-org
-```
-
-## Select Columns of interest
-
-```{r}
-( fisl_twi1 = fisl_twi07_clean %>% select(ID:project_name, twi) )
-( lc_twi1 = lc_twi06_clean %>% select(ID:project_name, twi) )
-( org_twi1 = org_twi_add %>% select(ID:project_name, twi) )
-```
+# Select variables of interest
 
 ```{r}
 ( fisl_df = fisl %>% 
-    select(HLI:elevation, ruggedness:slope_rad) %>% 
-    relocate(ID) %>% 
-    left_join(fisl_twi1, by="ID"))
-
+    select(HLI:TRASP, aspect_rad, elevation, ruggedness:slope_rad) %>% 
+    relocate(ID) )
+  
 ( lc_df = lc %>% 
-    select(HLI:elevation, ruggedness:slope_rad) %>% 
-    relocate(ID) %>% 
-    left_join(lc_twi1, by="ID"))
+    select(HLI:TRASP, aspect_rad, elevation, ruggedness:slope_rad) %>% 
+    relocate(ID) )
+
+( lcc_df = lcc %>% 
+    select(HLI:TRASP, aspect_rad, elevation, ruggedness:slope_rad) %>% 
+    relocate(ID) )
 
 ( org_df = org %>% 
-    select(HLI:aspect_rad, elevation, id, ruggedness:slope_rad) %>% 
-    relocate(id) %>% 
-    rename(ID=id) %>% 
-    left_join(org_twi1, by="ID"))
+    select(HLI:TRASP, aspect_rad, elevation, ruggedness:slope_rad) %>% 
+    relocate(ID)  )
 ```
 
-
-## Combine all Projects into one DF
-
-```{r}
-( terrain_df = bind_rows(fisl_df, lc_df, org_df) )
-```
-
-### Check NA
-
-```{r}
-( terrain_na = terrain_df %>% 
-  filter(if_any(everything(), is.na)) )
-
-unique(terrain_na$ID)
-```
-
-## Plot
-
-```{r}
-ggplot(join_terrain, aes(x = twi)) +
-  geom_histogram( fill = "steelblue", color = "white") +
-  labs(title = "Histogram of TWI Values", x = "TWI", y = "Count") +
-  theme_minimal()
-
-```
-
-```{r}
-ggplot(join_terrain, aes(x = TRASP)) +
-  geom_histogram( fill = "steelblue", color = "white") +
-  labs(title = "Histogram of TRASP Values", x = "TRASP", y = "Count") +
-  theme_minimal()
-
-```
-
-```{r}
-ggplot(join_terrain, aes(x = slope_rad)) +
-  geom_histogram( fill = "steelblue", color = "white") +
-  labs(title = "Histogram of slope in radian Values", x = "slope radians", y = "Count") +
-  theme_minimal()
-
-```
-
-
-```{r}
-ggplot(join_terrain, aes(x = HLI)) +
-  geom_histogram( fill = "steelblue", color = "white") +
-  labs(title = "Histogram of HLI Values", x = "HLI", y = "Count") +
-  theme_minimal()
-
-```
 
 ## Write to CSV
 
 ```{r}
-write_csv(terrain_df, "../outputs/LCC_cleaned/csv/2025-08-08_TerrainVariablesFabDEM.csv")
+write_csv(fisl_df, "../outputs/2025-08-18_cleaned/csv/2025-10-02_FISL_Terrain.csv")
+write_csv(lc_df, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_Terrain.csv")
+
+write_csv(lcc_df, "../outputs/2025-08-18_cleaned/csv/2025-09-22_LCC_Terrain.csv")
+
+write_csv(org_df, "../outputs/2025-08-18_cleaned/csv/2025-09-22_ORG_Terrain.csv")
 ```
 
 **THE END**
