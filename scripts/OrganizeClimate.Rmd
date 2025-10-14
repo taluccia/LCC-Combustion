@@ -19,6 +19,15 @@ library(tidyverse)
 
 # Data
 
+## Site
+
+```{r}
+lc_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+fisl_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
+## CNA
+
 ```{r}
 fisl_cna = read_csv("../data/combustion_data_layers/FISL/2025-06-02_climateNA_FISL_Normal_1981_2010MSY.csv")
 
@@ -42,6 +51,7 @@ sort(names(lcc_ceu))
 ```{r}
 names(lcc_cna)
 ```
+
 # Clean Data
 
 ## Function
@@ -49,8 +59,8 @@ names(lcc_cna)
 ```{r}
 clean_cna_old = function(df){
   df %>% 
-  rename(ID = id1) %>%
-    select(ID, AHM, bFFP, CMD, CMD05, CMD06, CMD07, CMD08, DD_0, DD_0_05, DD_0_06, DD_0_07, DD_0_08, DD_18, DD18_05, DD18_06, DD18_07, DD18_08, DD18, DD18_sm, DD18_05, DD18_06, DD18_07, DD18_08, DD5, DD5_05, DD5_06, DD5_07, DD5_08, eFFP, EMT, Eref, Eref05, Eref06, Eref07, Eref08, EXT, FFP, MAP, MAR, MAT, MCMT, MSP, MWMT, NFFD, NFFD05, NFFD06, NFFD07, NFFD08, PAS, PAS05, PAS06, PAS07, PAS08, PPT05, PPT06, PPT07, PPT08, Rad05, Rad06, Rad07, Rad08, RH, RH05, RH06, RH07, RH08, SHM, Tave05, Tave06, Tave07, Tave08, TD, Tmax05, Tmax06, Tmax07, Tmax08, Tmin05, Tmin06, Tmin07, Tmin08) %>%
+  rename(ID = id1, fireYr = id2) %>%
+    select(ID,fireYr, lat, long, AHM, bFFP, CMD, CMD05, CMD06, CMD07, CMD08, DD_0, DD_0_05, DD_0_06, DD_0_07, DD_0_08, DD_18, DD18_05, DD18_06, DD18_07, DD18_08, DD18, DD18_sm, DD18_05, DD18_06, DD18_07, DD18_08, DD5, DD5_05, DD5_06, DD5_07, DD5_08, eFFP, EMT, Eref, Eref05, Eref06, Eref07, Eref08, EXT, FFP, MAP, MAR, MAT, MCMT, MSP, MWMT, NFFD, NFFD05, NFFD06, NFFD07, NFFD08, PAS, PAS05, PAS06, PAS07, PAS08, PPT05, PPT06, PPT07, PPT08, Rad05, Rad06, Rad07, Rad08, RH, RH05, RH06, RH07, RH08, SHM, Tave05, Tave06, Tave07, Tave08, TD, Tmax05, Tmax06, Tmax07, Tmax08, Tmin05, Tmin06, Tmin07, Tmin08) %>%
     mutate(CMD_5_8 = ((CMD05 + CMD06 + CMD07 + CMD08)/4),
            DD_0_5_8 = ((DD_0_05 + DD_0_06 + DD_0_07 + DD_0_08)/4),
            DD_18_5_8 = ((DD18_05 + DD18_06 + DD18_07 + DD18_08)/4),
@@ -105,8 +115,8 @@ clean_ceu = function(df){
 
 clean_cna = function(df){
   df %>% 
-  rename(ID = id1) %>%
-    select(ID,  AHM, bFFP, CMD, DD_0, DD_18, DD18, DD5, eFFP, EMT, Eref, FFP, MAP, MAT, MCMT, MSP, MWMT, NFFD, PAS, PPT_at, PPT_sm, PPT_sp, PPT_wt,  SHM, Tave_at, Tave_sm, Tave_sp, Tave_wt,  TD, Tmax_at, Tmax_sm, Tmax_sp, Tmax_wt,  Tmin_at, Tmin_sm, Tmin_sp, Tmin_wt)
+  rename(ID = id1, fireYr = id2) %>%
+    select(ID, fireYr, Latitude, Longitude, AHM, bFFP, CMD, DD_0, DD_18, DD18, DD5, eFFP, EMT, Eref, FFP, MAP, MAT, MCMT, MSP, MWMT, NFFD, PAS, PPT_at, PPT_sm, PPT_sp, PPT_wt,  SHM, Tave_at, Tave_sm, Tave_sp, Tave_wt,  TD, Tmax_at, Tmax_sm, Tmax_sp, Tmax_wt,  Tmin_at, Tmin_sm, Tmin_sp, Tmin_wt)
 }
 ```
 
@@ -142,10 +152,71 @@ lcc_cna_clean %>% filter(ID %in% target_id)
 ( lcc_combine = bind_rows(lcc_naonly, lcc_ceu_clean) )
 ```
 
+# Subset CNA by FISL and LC site level
+
+```{r}
+fisl_site
+lc_site
+```
+
+## FISL
+
+```{r}
+fisl_cna_clean %>% filter(ID %in% c('FISL_233', 'FISL_234', 'FISL_235'))
+```
+
+```{r}
+fisl_site %>% filter(site_ID == "FISL_44")
+```
+FISL_44	44	Shovel Creek	20	FISL_233, FISL_234, FISL_235
+```{r}
+( fisl_cna_site = fisl_cna_clean %>%
+  filter(fireYr != 2004) %>%
+  distinct(Latitude, Longitude, .keep_all = TRUE) %>%
+  rename(lat = Latitude, lon = Longitude) %>%
+  full_join(fisl_site, by = c("lat", "lon", "fireYr")) %>%
+  drop_na() %>%
+    select(-fireYr, -lat, -lon, -ID) %>% 
+    rename(ID=site_ID) %>% 
+    relocate(ID) %>% select(ID:Tmin_wt) )
+```
+
+```{r}
+fisl_cna_clean %>% filter(ID %in% c('FISL_233', 'FISL_234', 'FISL_235'))
+(fisl_44 = fisl_cna_clean %>% 
+    filter(ID =='FISL_233') %>%
+    mutate(ID = if_else(ID == "FISL_233", "FISL_44", ID)) %>%
+    select(-fireYr, -Latitude, -Longitude)  ) 
+```
+
+```{r}
+( fisl_cna_site1 = bind_rows(fisl_cna_site, fisl_44) )
+```
+
+
+## LC
+
+```{r}
+( lc_cna_site = lc_cna_clean  %>%
+  mutate(Longitude = case_when(ID %in% c('LC_112', 'LC_113', 'LC_118') ~ -151.458963, TRUE ~ Longitude)) %>%
+  distinct(Latitude, Longitude, .keep_all = TRUE) %>%
+  rename(lat = Latitude, lon = Longitude) %>%
+  full_join(lc_site, by = c("lat", "lon", "fireYr")) %>%
+  drop_na() %>%
+  select(-fireYr, -lat, -lon, -ID) %>% 
+    rename(ID=site_ID) %>% 
+    relocate(ID) %>% 
+    select(ID:Tmin_wt) 
+  )
+```
+
+
 # Save DF as csv
 
 ```{r}
-write_csv(fisl_cna_clean, "../outputs/2025-08-18_cleaned/csv/2025-08-20_Fisl_ClimateNormals.csv")
-write_csv(lc_cna_clean, "../outputs/2025-08-18_cleaned/csv/2025-08-20_LC_ClimateNormals.csv")
+
+write_csv(fisl_cna_site1, "../outputs/2025-08-18_cleaned/csv/2025-10-02_Fisl_site_ClimateNormals.csv")
+write_csv(lc_cna_site, "../outputs/2025-08-18_cleaned/csv/2025-10-02_LC_site_ClimateNormals.csv")
+
 write_csv(lcc_combine, "../outputs/2025-08-18_cleaned/csv/2025-08-20_LCC_ClimateNormals.csv")
 ```

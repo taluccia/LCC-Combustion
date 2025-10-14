@@ -55,10 +55,10 @@ crs(fri)
 
 ```{r}
 lc_pts_proj = st_transform(lc_pts, crs=crs(fri)) %>% 
-  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id)
+  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id) 
 
 lcc_pts_proj = st_transform(lcc_pts, crs=crs(fri)) %>%
-  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id)
+  mutate(row_id = row_number()) %>% rename(proj_ID = ID, ID=row_id) 
 
 ```
 
@@ -75,19 +75,6 @@ crs(fri) == crs(lcc_pts_proj)
 ```{r}
 lc_vec = vect(lc_pts_proj)
 lcc_vec = vect(lcc_pts_proj)
-```
-
-# Extract pixel values at points
-
-
-```{r}
-# Extract values
-lc_vals <- extract(fri, lc_vec)
-
-# Join back: vals has an ID column matching row order in pts
-lc_pts_with_vals <- terra::cbind(lc_vec, lc_vals[ , -1])  # drop the ID column
-
-lc_pts_with_vals
 ```
 
 
@@ -138,7 +125,14 @@ join_clean_function <- function(df1, df2){df1 %>%
   relocate(ID) %>%
   select(ID, fri) )
 ```
+```{r}
+# Replace NA for LCC_62 with 
+lcc_fri$fri[is.na(lcc_fri$fri) & lcc_fri$ID == "LCC_62"] <- 5790.12598
+```
 
+```{r}
+lcc_fri
+```
 ## Write to CSV
 
 ```{r}
@@ -146,4 +140,23 @@ write_csv(lc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
 write_csv(lcc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
 ```
 
+# View Missing FRI
+
+```{r}
+( lcc_62 = lcc_pts_proj %>% filter(proj_ID %in% c("LCC_62", "LCC_61")) )
+```
+```{r}
+# Define buffer around the point (e.g., 5000 meters if projected, or ~0.05 deg if lat/long)
+pt_buf <- st_buffer(lcc_62, dist = 100000)
+
+# Crop raster to buffered extent
+r_crop <- crop(fri, pt_buf)
+
+
+```
+
+```{r}
+mapview(r_crop, col.regions = terrain.colors(10), legend = TRUE) +
+  mapview(lcc_62, col.regions = "red", cex = 4) 
+```
 **THE END**

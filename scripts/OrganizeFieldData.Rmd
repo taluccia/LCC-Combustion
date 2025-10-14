@@ -42,6 +42,40 @@ fisl
 org_depth
 org
 ```
+# Fix Known issues
+ Issues Identified 9-26-2025
+LC -- Fix Longitude coordinate for LC fire-site-plot ChitananaMooseheart	36	A, B, C
+LCC -- Fix Fire Year for Researcher Hayes 2006 -> 1996
+
+## LC 
+
+```{r}
+lc %>% filter(fire == "FrozenBlackCalf")
+```
+
+```{r}
+( lc <- lc %>%
+  mutate(longitude = case_when(fire == "ChitananaMooseheart" & site == 36 & plot %in% c("A","B","C") ~ -151.458963, TRUE ~ longitude))
+)
+
+```
+
+```{r}
+lc %>% filter(fire %in% c("FrozenBlackCalf", "ChitananaMooseheart"))
+```
+
+## LCC
+Lab-01
+Lab-02
+Lab-03
+Lab-04
+Lab-05
+```{r}
+( lcc = lcc %>%
+    mutate(year_of_burn = case_when(researcher == "Hayes" & site %in% c("36_1","20_1") ~ "1996", TRUE ~ year_of_burn)) %>%
+    mutate(year_of_burn = case_when(researcher == "Pare" & site %in% c("Lab-01", "Lab-02", "Lab-03", "Lab-04", "Lab-05") ~ "2018", TRUE ~ year_of_burn))
+  )
+```
 
 ## Check Min max Lat/lon
 
@@ -110,6 +144,12 @@ org %>% select(id, above.carbon.combusted,below.ground.carbon.combusted) %>% fil
 ```{r}
 org %>% select(id, above.carbon.combusted, below.ground.carbon.combusted) %>% filter(is.na(below.ground.carbon.combusted))
 ```
+
+
+
+
+
+
 # Add unique ID and select columns for spatial data
 
 ```{r}
@@ -136,15 +176,108 @@ fisl_id = fisl %>%
 
 ```
 
+```{r}
+lcc_id
+lc_id
+fisl_id
+```
+
 ## Save full dataframe with ID to csv
 
 ```{r}
-write_csv(lc_id, "../outputs/LCC_cleaned/csv/LC_ID_2025-08-21.csv")
-write_csv(lcc_id, "../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
-write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_2025-08-21.csv")
+write_csv(lc_id, "../outputs/LCC_cleaned/csv/LC_ID_plot_2025-10-09.csv")
+write_csv(lcc_id, "../outputs/LCC_cleaned/csv/LCC_ID_site_2025-10-09.csv")
+write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_plot_2025-10-09.csv")
 ```
 
-## Explore missing Combustion and fire years before 2001
+
+# Site level
+
+Aggregate LC and Fisl to site level and remove body data (which is included in the original combustion data) from fisl. 
+
+```{r}
+set.seed(56)
+
+
+( lc_site = lc_id %>% 
+    select(ID:plot, unique_site_id, official_fire_scar, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted) %>% mutate(combusted_below = total_c_combusted - combustion_above) %>%
+    rename(lat = latitude, lon = longitude, fireYr = recent_burn, combusted_above = combustion_above) %>%
+    select(-total_c_combusted) %>%
+    group_by(fire, site) %>%
+    summarise(
+      ID_plot_list = paste(ID, collapse = ", "),
+      lat = min(lat),
+      lon = min(lon),
+      fireYr = mean(fireYr),
+      combusted_above = mean(combusted_above),
+      burn_depth = mean(burn_depth),
+      combusted_below = mean(combusted_below)
+    ) %>%
+    arrange(site) %>%
+    ungroup() %>%
+    mutate(project = "LC",
+           row_id = row_number(),
+         site_ID = paste0(project, "_", row_id )) %>%
+    relocate(site_ID, row_id)
+)
+```
+
+```{r}
+n_distinct(lc_site$site_ID)
+n_distinct(lc_site$row_id)
+```
+
+```{r}
+( fisl_site = fisl_id %>% 
+  filter(plot %in% c("A","B","C")) %>%
+    select(ID:fire_name, year, site, plot, latitude, longitude,  comb.trees, comb.depth, comb.below) %>%
+    rename(lat = latitude, lon = longitude, fireYr = year, combusted_above = comb.trees, combusted_below = comb.below, burn_depth=comb.depth) %>%
+    group_by(fire_name, site) %>%
+    summarise(
+      ID_plot_list = paste(ID, collapse = ", "),
+      lat = min(lat),
+      lon = min(lon),
+      fireYr = mean(fireYr),
+      combusted_above = mean(combusted_above),
+      burn_depth = mean(burn_depth),
+      combusted_below = mean(combusted_below)
+    ) %>%
+    arrange(site) %>%
+    ungroup() %>%
+    mutate(project = "FISL",
+           row_id = row_number(),
+         site_ID = paste0(project, "_", row_id )) %>%
+    relocate(site_ID, row_id)
+)
+```
+
+```{r}
+n_distinct(fisl_site$site_ID)
+n_distinct(fisl_site$row_id)
+n_distinct(fisl_site$lat)
+n_distinct(fisl_site$lon)
+```
+```{r}
+write_csv(lc_site, "../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+write_csv(fisl_site, "../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
+# Finalize LCC
+
+
+```{r}
+lcc_id
+( lcc_site = lcc_id  %>% 
+  select(ID:researcher, study_area, site, latitude, longitude, year_of_burn) %>%
+    rename(lat = latitude, lon = longitude, fireYr = year_of_burn) %>%
+    mutate(project = "LCC") %>%
+  filter(as.numeric(fireYr) >2000)  %>%
+    relocate(ID, project) %>%
+    select(ID, project, researcher, site, lat, lon, fireYr))
+
+```
+
+# Explore missing Combustion and fire years before 2001
 
 ```{r}
 fisl_id %>% 
@@ -167,7 +300,7 @@ fisl n= 311
 lc n= 555
 org n = 920
 
-## Subset data for field combustion metrics columns to ID, lat, Lon, 
+# Subset data for field combustion metrics columns to ID, lat, Lon, 
 
 ### LC Full Data Set
 n=555
@@ -202,6 +335,7 @@ all burn years greater than 2001
     relocate(ID, project_name)
 )
 ```
+
 ### Org Full and subset Data Set
 Full Data n=1011
 drop missing data for combustion calculations (if NA for all 3) and drop burn years before 2001 n = 920
@@ -214,13 +348,65 @@ org_depth_select = org_depth %>% select(id, burn.depth) %>% rename(ID=id)
 org
 ```
 
+mutate(project = "LC", 
+         ID = paste0(project, "_", row_id )) %>%
+  relocate(ID, project, row_id) %>%
+
 ```{r}
-( org_full = org %>% 
-    dplyr::select(id, latitude, longitude, project.name, burn_year, above.carbon.combusted, below.ground.carbon.combusted) %>% 
+( org_plusDepth = org %>%  
     rename(ID=id, lat= latitude, lon = longitude, project_name = project.name, fireYr = burn_year) %>%
     left_join(org_depth_select, by = "ID") %>%
+    relocate(ID, project_name) %>%
+    rename(ID_org = ID) %>%
+    mutate(row_id = row_number(),
+           ID = paste0(project_name, "_", row_id )) %>%
+  relocate(ID, project_name, row_id) %>% 
+  filter(ID != "AK_Rogers_195") 
+)
+```
+```{r}
+target_id = c('AK_KT_132', 'AK_KT_135', 'AK_KT_150', 'AK_KT_22', 'AK_KT_7', 'CAN_deGroot_209', 'CAN_deGroot_220', 'NWT_BCKE_398', 'NWT_BCKE_399', 'NWT_BCKE_400', 'NWT_BCKE_402', 'NWT_BCKE_403', 'NWT_BCKE_404', 'NWT_BCKE_405', 'NWT_BCKE_406', 'NWT_BCKE_407', 'NWT_BCKE_420', 'NWT_BCKE_421', 'NWT_BCKE_423', 'NWT_BCKE_424', 'NWT_BCKE_425', 'NWT_BCKE_438', 'NWT_BCKE_439', 'NWT_BCKE_440', 'NWT_BCKE_441', 'NWT_BCKE_442', 'NWT_BCKE_443', 'NWT_BCKE_444', 'NWT_BCKE_445', 'NWT_BCKE_446', 'NWT_BCKE_447', 'NWT_BCKE_448', 'NWT_BCKE_449', 'NWT_BCKE_483', 'NWT_BCKE_589', 'NWT_BCKE_606', 'NWT_BCKE_613', 'NWT_BCKE_648', 'NWT_BCKE_651', 'NWT_BCKE_659', 'NWT_BCKE_660', 'NWT_BCKE_661', 'NWT_BCKE_662', 'NWT_BCKE_663', 'NWT_BCKE_665', 'NWT_BCKE_672', 'NWT_BCKE_678', 'NWT_BCKE_681', 'NWT_BCKE_682', 'NWT_BCKE_684', 'NWT_BCKE_685', 'NWT_BCKE_687', 'NWT_BCKE_688', 'NWT_BCKE_689', 'NWT_BCKE_690', 'NWT_BCKE_692', 'NWT_BCKE_694', 'NWT_BCKE_695', 'NWT_BCKE_696', 'NWT_BCKE_698', 'NWT_BCKE_699', 'NWT_BCKE_700', 'NWT_BCKE_701', 'NWT_BCKE_702', 'NWT_BCKE_703', 'NWT_BCKE_712', 'NWT_BCKE_713', 'NWT_BCKE_716', 'NWT_BCKE_717', 'NWT_MackWalker_718', 'NWT_MackWalker_720', 'NWT_MackWalker_732', 'NWT_MackWalker_733', 'NWT_MackWalker_745', 'NWT_MackWalker_746', 'NWT_MackWalker_899', 'SK_RTJ_1006')
+```
+
+```{r}
+landCover_na = org_plusDepth %>% filter(ID %in% target_id)
+cat(paste0(sprintf("'%s'", sort(unique(landCover_na$ID_org))), collapse = ", "))
+```
+```{r}
+target_field = c('sf.102', 'sf.104', 'sf.1052', 'sf.1073', 'sf.1076', 'sf.1083', 'sf.1084', 'sf.1085', 'sf.1086', 'sf.1087', 'sf.1088', 'sf.1095', 'sf.1100', 'sf.1103', 'sf.1104', 'sf.1106', 'sf.1107', 'sf.1108', 'sf.1109', 'sf.1110', 'sf.1111', 'sf.1113', 'sf.1115', 'sf.1116', 'sf.1117', 'sf.1118', 'sf.1119', 'sf.1120', 'sf.1121', 'sf.1122', 'sf.1123', 'sf.1131', 'sf.1132', 'sf.1135', 'sf.1136', 'sf.1137', 'sf.1138', 'sf.1139', 'sf.1141', 'sf.1142', 'sf.1143', 'sf.1144', 'sf.1145', 'sf.1146', 'sf.1157', 'sf.1158', 'sf.116', 'sf.1160', 'sf.1161', 'sf.1162', 'sf.117', 'sf.1174', 'sf.1175', 'sf.1176', 'sf.1177', 'sf.1178', 'sf.1179', 'sf.1180', 'sf.1181', 'sf.1182', 'sf.1183', 'sf.1184', 'sf.1215', 'sf.129', 'sf.130', 'sf.1310', 'sf.1325', 'sf.1332', 'sf.286', 'sf.394', 'sf.397', 'sf.411', 'sf.438', 'sf.452', 'sf.677', 'sf.971', 'sf.972')
+```
+
+```{r}
+org_depth %>% filter(id %in% target_field)
+```
+
+
+```{r}
+df_duplicates <- org_plusDepth[org_plusDepth$ID_org %in% org_plusDepth$ID_org[duplicated(org_plusDepth$ID_org)], ]
+df_duplicates
+
+org_plusDepth %>% filter(ID_org =='sf.712')
+```
+
+```{r}
+unique(org_plusDepth$project_name)
+```
+```{r}
+( org_full = org_plusDepth %>% 
+    dplyr::select(ID, lat, lon, project_name, fireYr, above.carbon.combusted, below.ground.carbon.combusted, burn.depth) %>%
     relocate(ID, project_name)
 )
+```
+
+```{r}
+#gfwed, cna, indices
+( orgPredictors = org_plusDepth %>% 
+    dplyr::select(ID, ID_org, PFI,  Relative.humidity, Temperature, VPD, Wind.speed, NDII, NDVI, brightness, dNBR, greenness, rbr, Tree.cover, wetness, contains("CNA")) 
+)
+```
+
+```{r}
+( org_DoB = org_plusDepth %>% select(ID, DOB_lst, fireYr, lat, lon)  )
 ```
 
 
@@ -230,45 +416,50 @@ org
   filter(as.numeric(fireYr) >2000) 
 )
 ```
-### Org Full and subset Data Set
+
+### LCC Full and subset Data Set
 Full Data n=110
 drop missing data for combustion calculations (if NA for all 3) and drop burn years before 2001 n = 102
 
 
-```{r}
-( lcc_full = lcc_id %>% 
-    select(ID, latitude, longitude, year_of_burn) %>% 
-    rename(lat = latitude, lon = longitude, fireYr = year_of_burn) %>%
-    mutate(project_name = "LCC") %>%
-    relocate(ID, project_name)
-)
-```
 
-```{r}
-( lcc_subset = lcc_full %>% 
-    filter(as.numeric(fireYr) >2000)     )
-```
 
 # Check 
 
 ```{r}
 lc_full
-lcc_full
-lcc_subset
+
+
 fisl_full
 org_full
 org_subset
 ```
 
-
-# Save as csv
+```{r}
+orgPredictors
+```
 
 ```{r}
-write_csv(org_full, "../outputs/LCC_cleaned/csv/2025-08-28_ORG_fullCombustionID.csv")
+lcc_site
+```
+
+
+# Save as csv
+```{r}
+write_csv(lcc_site, "../outputs/LCC_cleaned/csv/2025-10-09_LCC_fullCombustionID.csv")
+```
+
+```{r}
+write_csv(org_full, "../outputs/LCC_cleaned/csv/2025-08-30_ORG_fullCombustionID.csv")
 write_csv(org_subset, "../outputs/LCC_cleaned/csv/2025-08-28_ORG_subsetCombustionID.csv")
 write_csv(lc_full, "../outputs/LCC_cleaned/csv/2025-08-28_LC_fullCombustionID.csv")
-write_csv(lcc_full, "../outputs/LCC_cleaned/csv/2025-08-28_LCC_fullCombustionID.csv")
-write_csv(lcc_subset, "../outputs/LCC_cleaned/csv/2025-08-28_LCC_subsetCombustionID.csv")
+
 write_csv(fisl_full, "../outputs/LCC_cleaned/csv/2025-08-28_FISL_fullCombustionID.csv")
 ```
+
+```{r}
+write_csv(orgPredictors, "../outputs/LCC_cleaned/csv/2025-08-31_ORG_Predictors.csv")
+write_csv(org_DoB, "../outputs/LCC_cleaned/csv/2025-08-31_ORG_DoB.csv")
+```
+
 

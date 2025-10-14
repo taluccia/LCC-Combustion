@@ -29,39 +29,39 @@ library(tidyverse)
 ## FWI
 ```{r}
 fisl_fwi_list = list.files(path="../data/fisl_fwi", pattern='*.csv', full.names = TRUE)
-fisl_fwi_list
+#fisl_fwi_list
 ```
 
 ```{r}
 lc_fwi_list = list.files(path="../data/lc_fwi", pattern='*.csv', full.names = TRUE)
-lc_fwi_list
+#lc_fwi_list
 ```
 
 ```{r}
 lcc_fwi_list = list.files(path="../data/lcc_fwi", pattern='*.csv', full.names = TRUE)
-lcc_fwi_list
+#lcc_fwi_list
 ```
 
 ```{r}
-org_fwi_list = list.files(path="../data/org_fwi", pattern='*.csv', full.names = TRUE)
-org_fwi_list
+org_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/fwi_org", pattern='*.csv', full.names = TRUE)
+#org_fwi_list
 ```
 
 ## GFWED
 
 ```{r}
 fisl_gfwed_list = list.files(path="../data/fisl_gfwed", pattern='*.csv', full.names = TRUE)
-fisl_gfwed_list
+#fisl_gfwed_list
 ```
 
 ```{r}
 lc_gfwed_list = list.files(path="../data/lc_gfwed", pattern='*.csv', full.names = TRUE)
-lc_gfwed_list
+#lc_gfwed_list
 ```
 
 ```{r}
 lcc_gfwed_list = list.files(path="../data/lcc_gfwed", pattern='*.csv', full.names = TRUE)
-lcc_gfwed_list
+#lcc_gfwed_list
 ```
 
 
@@ -104,19 +104,11 @@ clean_select_FWI <- function(df){df %>%
 (fisl_fwi_sub = clean_select_FWI(fisl_fwi))
 (lc_fwi_sub = clean_select_FWI(lc_fwi))
 (lcc_fwi_sub = clean_select_FWI(lcc_fwi))
+(org_fwi_sub = clean_select_FWI(org_fwi))
 ```
 
-```{r}
-(org_fwi_sub = org_fwi%>% 
-    rename(BUI = build_up_index, DC= drought_code, DMC = duff_moisture_code, FFMC = fine_fuel_moisture_code, FWI = fire_weather_index, ISI = initial_fire_spread_index, DSR = fire_daily_severity_rating) %>%
-  select(id, date, DOB_lst, burn_yr, BUI, DC, DMC, FFMC, FWI, ISI, DSR)
- 
-)
- 
-```
-```{r}
-sort(unique(org_fwi_sub$burn_yr))
-```
+
+
 ```{r}
 ( fisl_gfwed_sub = fisl_gfwed %>% select(ID, rh, t, vpd, wspeed))
 ( lc_gfwed_sub = lc_gfwed %>% select(ID, rh, t, vpd, wspeed) )
@@ -143,7 +135,7 @@ lcc_dfs <- list(lcc_fwi_sub, lcc_gfwed_sub)
 # Save
 
 ```{r}
-write_csv(org_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Org_fwi.csv")
+write_csv(org_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-31_Org_fwi.csv")
 ```
 
 ```{r}

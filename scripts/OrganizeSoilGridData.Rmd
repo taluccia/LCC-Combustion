@@ -20,18 +20,42 @@ library(tidyverse)
 
 # Data
 2025-08-18_staticSoilPfi_FISL
-```{r}
-fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoil30cm_FISL.csv")
-lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoil30cm_LC.csv")
-org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoil30cm_ORG.csv")
-lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoil30cm_LCC.csv")
-```
+
+## Extracted Soil grid
 
 ```{r}
-fisl_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoilPfi_FISL.csv")
-lc_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoilPfi_LC.csv")
-org_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoilPfi_ORG.csv")
+
+fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/2025-09-30_staticSoil30cm_FISL.csv")
+lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/2025-10-03_staticSoil30cm_LC.csv")
+org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-30_soil/2025-08-30_staticSoil30cm_ORG.csv")
+lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-30_soil/2025-08-30_staticSoil30cm_LCC.csv")
+```
+
+
+
+## Extracted PFI
+
+```{r}
+
+fisl_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/2025-09-30_staticSoilPfi_FISL.csv")
+lc_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/2025-10-03_staticSoilPfi_LC.csv")
+org_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-30_soil/2025-08-30_staticSoilPfi_ORG.csv")
 lcc_pfi = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_soil/2025-08-18_staticSoilPfi_LCC.csv")
+```
+
+## Missing data extracted with buffer
+
+```{r}
+lcc_naFill = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-30_soil/2025-09-11_staticSoil30cm_Buffered_LCC.csv")
+
+org_naFill = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-30_soil/2025-09-11_staticSoil30cm_Buffered_ORG.csv")
+```
+
+## Missing data extrdacted with adjacent point
+
+```{r}
+lcc_16 = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-18_staticSoil30cm_LCC_16.csv")
+
 ```
 
 # View Data
@@ -49,6 +73,12 @@ org_pfi
 lcc_pfi
 ```
 
+```{r}
+lcc_naFill
+lcc_16
+org_naFill
+```
+
 
 ```{r}
 names(lcc)
@@ -58,28 +88,21 @@ names(lcc_pfi)
 # Clean
 Rename soil variables to match previous iterations and select variables of interest.
 
-## Function
-pH_30
-Sand_30
-Silt_30
-Clay_30
-BD_30
-SOC_30
-```{r}
+## Functions
 
+```{r}
 
 clean_select_pfi <- function(df){df %>%
     select(ID, PFI) 
 }
 
-clean_select_soil <- function(df1, df2){df1 %>% 
+clean_select_soil <- function(df1){df1 %>% 
     rename(BD_30 = bdod_0_30cm, Clay_30 = clay_0_30cm, pH_30 = phh2o_0_30cm, Sand_30 = sand_0_30cm, Silt_30 = silt_0_30cm, SOC_30 = soc_0_30cm) %>%
-  select(ID, BD_30, pH_30, Sand_30, Silt_30, Clay_30, SOC_30) %>%
-    left_join(df2, by ="ID")
+  select(ID, BD_30, pH_30, Sand_30, Silt_30, Clay_30, SOC_30) 
 }
 ```
 
-
+### Main data frames
 
 ```{r}
 (fisl_pfi_sub = clean_select_pfi(fisl_pfi))
@@ -87,23 +110,86 @@ clean_select_soil <- function(df1, df2){df1 %>%
 (lcc_pfi_sub = clean_select_pfi(lcc_pfi))
 (org_pfi_sub = clean_select_pfi(org_pfi))
 ```
+## Clean up lcc_16
+
+```{r}
+
+( lcc_16_clean = lcc_16 %>% 
+  mutate(ID = "LCC_16") %>% 
+  rename(BD_30 = bdod_0_30cm, Clay_30 = clay_0_30cm, pH_30 = phh2o_0_30cm, Sand_30 = sand_0_30cm, Silt_30 = silt_0_30cm, SOC_30 = soc_0_30cm) %>%
+  select(ID, BD_30, pH_30, Sand_30, Silt_30, Clay_30, SOC_30)) 
+```
+
+## Missing dataframes and & join pFI data
+```{r}
+(fisl_soil_sub = clean_select_soil(fisl) %>%
+    left_join(fisl_pfi_sub, by ="ID")) 
+(lc_soil_sub = clean_select_soil(lc) %>%
+    left_join(lc_pfi_sub, by ="ID"))
+(lcc_soil_sub = clean_select_soil(lcc))
+(org_soil_sub = clean_select_soil(org))
+(lcc_soil_naFill = lcc_naFill %>% clean_select_soil() %>% filter(ID != "LCC_16") %>% bind_rows(lcc_16_clean) ) 
+(org_soil_naFill= clean_select_soil(org_naFill))
+
+
+```
+
+
+
+# Fill in missing NA
+
+## lcc
+
+```{r}
+lcc_soil_sub
+lcc_soil_naFill
+```
+
+```{r}
+unique(lcc_soil_naFill$ID)
+```
+
+```{r}
+( lcc_filled = lcc_soil_sub %>% 
+  filter(!ID %in% c("LCC_104", "LCC_16",  "LCC_100", "LCC_90")) %>%
+  bind_rows(lcc_soil_naFill) %>%
+    left_join(lcc_pfi_sub, by ="ID")
+)
+
+```
+
+## ORG
+
+```{r}
+org_soil_sub
+org_soil_naFill
+```
+
 
 
 ```{r}
-(fisl_soil_sub = clean_select_soil(fisl, fisl_pfi_sub ))
-(lc_soil_sub = clean_select_soil(lc, lc_pfi_sub))
-(lcc_soil_sub = clean_select_soil(lcc, lcc_pfi_sub))
-(org_soil_sub = clean_select_soil(org, org_pfi_sub))
+unique(org_soil_naFill$ID)
 ```
 
+```{r}
+( org_filled = org_soil_sub %>% 
+  filter(!ID %in% c("CAN_deGroot_209", "CAN_deGroot_220", "CAN_deGroot_237", "NWT_BCKE_485", "NWT_BCKE_486", "NWT_BCKE_501", "NWT_BCKE_502", "NWT_BCKE_503", "NWT_BCKE_519", "NWT_BCKE_520", "NWT_BCKE_521", "NWT_BCKE_522", "NWT_BCKE_712", "NWT_BCKE_426", "NWT_BCKE_427", "NWT_BCKE_428", "NWT_BCKE_454", "NWT_BCKE_455", "NWT_BCKE_456", "NWT_BCKE_457", "NWT_BCKE_458", "NWT_BCKE_459", "NWT_BCKE_460", "NWT_BCKE_478",  "NWT_BCKE_479", "NWT_BCKE_480", "NWT_BCKE_481", "NWT_BCKE_482", "NWT_BCKE_483", "NWT_MackWalker_734", "NWT_MackWalker_735", "NWT_MackWalker_771", "NWT_MackWalker_774", "NWT_MackWalker_838", "NWT_MackWalker_847", "NWT_MackWalker_848", "NWT_MackWalker_863", "NWT_MackWalker_866", "NWT_MackWalker_890", "NWT_MackWalker_893", "NWT_MackWalker_906")) %>%
+  bind_rows(org_soil_naFill) %>%
+    full_join(org_pfi_sub, by ="ID") %>%
+    drop_na()
+)
+
+```
 
 # Save
 
 ## Write to CSV
 
 ```{r}
-write_csv(lc_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Soil_LC.csv")
-write_csv(lcc_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Soil_LCC.csv")
-write_csv(fisl_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Soil_FISL.csv")
-write_csv(org_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-08-18_Soil_ORG.csv")
+write_csv(lc_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-03_Soil_LC.csv")
+
+write_csv(fisl_soil_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-02_Soil_FISL.csv")
+
+write_csv(lcc_filled, "../outputs/2025-08-18_cleaned/csv/2025-09-18_Soil_LCC.csv")
+write_csv(org_filled, "../outputs/2025-08-18_cleaned/csv/2025-09-23_Soil_ORG.csv")
 ```

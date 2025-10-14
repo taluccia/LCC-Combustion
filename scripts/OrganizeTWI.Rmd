@@ -29,44 +29,32 @@ library(tidyverse)
 
 # Data
 
-## plot list
-
-```{r}
-org_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_ORG_fullCombustionID.csv")
-lc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LC_fullCombustionID.csv")
-lcc_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LCC_fullCombustionID.csv")
-fisl_plots = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_FISL_fullCombustionID.csv")
-```
-
 ## TWI
 
 ```{r}
 twi_list = list.files(path="../data/twi_utm_extracted", pattern='*.csv', full.names = TRUE)
 ```
 
-## terrain metrics
-
 ```{r}
-fisl = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_FISL.csv")
-lc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LC.csv")
-lcc = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_LCC.csv")
-org = read_csv("../data/2025-08-08_combustion_layer_update/2025-08-18_terrainEE/2025-08-18TerrainMetrics_ORG.csv")
+twi_org_list = (list.files(path="../data/2025-08-08_combustion_layer_update/2025-08-30_TWI_Org",  pattern='*.csv', full.names = TRUE))
 ```
 
 ```{r}
-mathes_twi_a = read_csv("../data/twi_csv_mathes/FABDEM_StaticTerrain_OldData_aboveground.csv")
-mathes_twi_b = read_csv("../data/twi_csv_mathes/FABDEM_StaticTerrain_OldData_belowground.csv")
+twi_org_na_list = (list.files(path="../data/2025-08-08_combustion_layer_update/2025-09-12_twi_org_missing",  pattern='*.csv', full.names = TRUE))
+```
+
+```{r}
+twi_nf = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-14_twi_lcc_missing/lcc_twi_zone21c.csv")
+```
+
+```{r}
+lc_twi_list = list.files("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/twi", pattern='*.csv', full.names = TRUE)
+
+fisl_twi_list = list.files("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/fisl_twi", pattern='*.csv', full.names = TRUE)
 ```
 
 # Read and combine data frame list
 
-```{r eval=FALSE, include=FALSE}
-csv_rbind <- function(file_list) {
-  csv_data <- purrr::map_dfr(file_list, read_csv)
-  return(csv_data)
-}
-
-```
 
 ```{r}
 csv_rbind <- function(file_list) {
@@ -81,7 +69,11 @@ csv_rbind <- function(file_list) {
 
 ```{r}
 ( twi= csv_rbind(twi_list) )
+( twi_org= csv_rbind(twi_org_list) )
+( twi_org_na= csv_rbind(twi_org_na_list) )
 
+( fisl_twi= csv_rbind(fisl_twi_list) )
+( lc_twi= csv_rbind(lc_twi_list) )
 ```
 
 ```{r}
@@ -104,30 +96,80 @@ unique(twi$prjct_n)
 
 ```{r}
 ( twi_clean = twi %>% select(ID, b1, prjct_n) %>% rename(twi=b1, project_name = prjct_n) )
+( twi_org_clean = twi_org %>% select(ID, b1, prjct_n) %>% rename(twi=b1, project_name = prjct_n) )
+( twi_org_na_clean = twi_org_na %>% select(ID, b1, prjct_n) %>% rename(twi=b1, project_name = prjct_n) )
+
+( twi_nf_clean = twi_nf %>% select(ID, b1, prjct_n) %>% rename(twi=b1, project_name = prjct_n) )
+```
+
+```{r}
+(lc_twi_clean = lc_twi %>% select(ID, b1, project) %>% rename(twi=b1) %>% distinct(ID, .keep_all = TRUE))
+(fisl_twi_clean = fisl_twi %>% select(ID, b1, project) %>% rename(twi=b1) %>% distinct(ID, .keep_all = TRUE))
 ```
 
 
 ```{r}
-( fisl_twi = twi_clean %>% filter(project_name=="FISL") %>% distinct(ID, .keep_all = TRUE))
-( lc_twi = twi_clean %>% filter(project_name=="LC") %>% distinct(ID, .keep_all = TRUE) )
-( lcc_twi = twi_clean %>% filter(project_name=="LCC") %>% distinct(ID, .keep_all = TRUE) )
-( org_twi = twi_clean %>% filter(project_name %in% c("NWT_BCKE", "NWT_MackWalker", "CAN_deGroot", "SK_RTJ", "JFSP_Boby", "AK_KT", "AK_Rogers", "Hoy_AK")) %>% distinct(ID, .keep_all = TRUE) )
+
+( lcc_twi = twi_clean %>% filter(project_name=="LCC") %>% bind_rows(twi_nf_clean) %>% distinct(ID, .keep_all = TRUE) )
+
+```
+
+# Filling missing twi
+
+```{r}
+(org_id_na = twi_org_na_clean %>% filter(ID %in% c('AK_KT_1', 'AK_KT_101', 'AK_KT_103', 'AK_KT_104', 'AK_KT_106', 'AK_KT_107', 'AK_KT_111', 'AK_KT_121', 'AK_KT_124', 'AK_KT_125', 'AK_KT_126', 'AK_KT_127', 'AK_KT_128', 'AK_KT_129', 'AK_KT_13', 'AK_KT_130', 'AK_KT_131', 'AK_KT_132', 'AK_KT_133', 'AK_KT_134', 'AK_KT_135', 'AK_KT_136', 'AK_KT_137', 'AK_KT_138', 'AK_KT_139', 'AK_KT_140', 'AK_KT_141', 'AK_KT_142', 'AK_KT_143', 'AK_KT_144', 'AK_KT_145', 'AK_KT_146', 'AK_KT_147', 'AK_KT_148', 'AK_KT_149', 'AK_KT_150', 'AK_KT_151', 'AK_KT_152', 'AK_KT_153', 'AK_KT_154', 'AK_KT_156', 'AK_KT_157', 'AK_KT_158', 'AK_KT_159', 'AK_KT_160', 'AK_KT_161', 'AK_KT_162', 'AK_KT_163', 'AK_KT_164', 'AK_KT_165', 'AK_KT_166', 'AK_KT_167', 'AK_KT_171', 'AK_KT_172', 'AK_KT_173', 'AK_KT_2', 'AK_KT_24', 'AK_KT_35', 'AK_KT_41', 'AK_KT_42', 'AK_KT_43', 'AK_KT_45', 'AK_KT_55', 'AK_KT_56', 'AK_KT_57', 'AK_KT_58', 'AK_KT_59', 'AK_KT_60', 'AK_KT_61', 'AK_KT_62', 'AK_KT_63', 'AK_KT_64', 'AK_KT_65', 'AK_KT_66', 'AK_KT_67', 'AK_KT_68', 'AK_KT_69', 'AK_KT_70', 'AK_KT_71', 'AK_KT_72', 'AK_KT_73', 'AK_KT_74', 'AK_KT_75', 'AK_KT_76', 'AK_KT_77', 'AK_KT_78', 'AK_KT_79', 'AK_KT_80', 'AK_KT_81', 'AK_KT_82', 'AK_KT_84', 'AK_KT_85', 'AK_KT_86', 'AK_KT_87', 'AK_KT_88', 'AK_KT_89', 'AK_KT_90', 'AK_KT_91', 'AK_KT_92', 'AK_KT_93', 'AK_KT_94', 'AK_KT_95', 'AK_KT_96', 'AK_KT_97', 'AK_KT_98', 'AK_KT_99', 'AK_Rogers_175', 'AK_Rogers_176', 'AK_Rogers_177', 'AK_Rogers_178', 'AK_Rogers_179', 'AK_Rogers_180', 'AK_Rogers_181', 'AK_Rogers_182', 'AK_Rogers_183', 'AK_Rogers_184', 'AK_Rogers_185', 'AK_Rogers_186', 'AK_Rogers_187', 'AK_Rogers_188', 'AK_Rogers_189', 'AK_Rogers_190', 'AK_Rogers_191', 'AK_Rogers_192', 'AK_Rogers_193', 'AK_Rogers_194', 'AK_Rogers_196', 'AK_Rogers_197', 'Hoy_AK_275', 'Hoy_AK_276', 'Hoy_AK_277', 'Hoy_AK_279', 'Hoy_AK_280', 'Hoy_AK_281', 'Hoy_AK_282', 'Hoy_AK_283', 'Hoy_AK_284', 'Hoy_AK_285', 'Hoy_AK_286', 'Hoy_AK_287', 'Hoy_AK_288', 'Hoy_AK_290', 'Hoy_AK_297', 'Hoy_AK_298', 'Hoy_AK_299', 'JFSP_Boby_353', 'JFSP_Boby_354', 'JFSP_Boby_355', 'JFSP_Boby_356', 'JFSP_Boby_357', 'JFSP_Boby_358', 'JFSP_Boby_359', 'JFSP_Boby_360', 'JFSP_Boby_362', 'JFSP_Boby_363', 'JFSP_Boby_364', 'JFSP_Boby_365', 'JFSP_Boby_366', 'JFSP_Boby_367', 'JFSP_Boby_368', 'JFSP_Boby_369', 'JFSP_Boby_370', 'JFSP_Boby_371', 'JFSP_Boby_373', 'JFSP_Boby_374', 'JFSP_Boby_375', 'JFSP_Boby_376', 'JFSP_Boby_377', 'JFSP_Boby_378', 'JFSP_Boby_379', 'JFSP_Boby_380', 'JFSP_Boby_381', 'JFSP_Boby_382', 'JFSP_Boby_384', 'JFSP_Boby_385', 'JFSP_Boby_386', 'JFSP_Boby_387', 'JFSP_Boby_388', 'JFSP_Boby_389', 'JFSP_Boby_390', 'JFSP_Boby_391', 'JFSP_Boby_392', 'JFSP_Boby_393', 'JFSP_Boby_395')) )
 ```
 
 
+
+
 ```{r}
-( lc_df = lc_plots %>% left_join(lc_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
-( lcc_df = lcc_plots %>% left_join(lcc_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
-( fisl_df = fisl_plots %>% left_join(fisl_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
-( org_df = org_plots %>% left_join(org_twi, by="ID") %>% select(-project_name.y) %>% rename(project_name = project_name.x))
+( org_filled = twi_org_clean %>% 
+  filter(!ID %in% c('AK_KT_1', 'AK_KT_101', 'AK_KT_103', 'AK_KT_104', 'AK_KT_106', 'AK_KT_107', 'AK_KT_111', 'AK_KT_121', 'AK_KT_124', 'AK_KT_125', 'AK_KT_126', 'AK_KT_127', 'AK_KT_128', 'AK_KT_129', 'AK_KT_13', 'AK_KT_130', 'AK_KT_131', 'AK_KT_132', 'AK_KT_133', 'AK_KT_134', 'AK_KT_135', 'AK_KT_136', 'AK_KT_137', 'AK_KT_138', 'AK_KT_139', 'AK_KT_140', 'AK_KT_141', 'AK_KT_142', 'AK_KT_143', 'AK_KT_144', 'AK_KT_145', 'AK_KT_146', 'AK_KT_147', 'AK_KT_148', 'AK_KT_149', 'AK_KT_150', 'AK_KT_151', 'AK_KT_152', 'AK_KT_153', 'AK_KT_154', 'AK_KT_156', 'AK_KT_157', 'AK_KT_158', 'AK_KT_159', 'AK_KT_160', 'AK_KT_161', 'AK_KT_162', 'AK_KT_163', 'AK_KT_164', 'AK_KT_165', 'AK_KT_166', 'AK_KT_167', 'AK_KT_171', 'AK_KT_172', 'AK_KT_173', 'AK_KT_2', 'AK_KT_24', 'AK_KT_35', 'AK_KT_41', 'AK_KT_42', 'AK_KT_43', 'AK_KT_45', 'AK_KT_55', 'AK_KT_56', 'AK_KT_57', 'AK_KT_58', 'AK_KT_59', 'AK_KT_60', 'AK_KT_61', 'AK_KT_62', 'AK_KT_63', 'AK_KT_64', 'AK_KT_65', 'AK_KT_66', 'AK_KT_67', 'AK_KT_68', 'AK_KT_69', 'AK_KT_70', 'AK_KT_71', 'AK_KT_72', 'AK_KT_73', 'AK_KT_74', 'AK_KT_75', 'AK_KT_76', 'AK_KT_77', 'AK_KT_78', 'AK_KT_79', 'AK_KT_80', 'AK_KT_81', 'AK_KT_82', 'AK_KT_84', 'AK_KT_85', 'AK_KT_86', 'AK_KT_87', 'AK_KT_88', 'AK_KT_89', 'AK_KT_90', 'AK_KT_91', 'AK_KT_92', 'AK_KT_93', 'AK_KT_94', 'AK_KT_95', 'AK_KT_96', 'AK_KT_97', 'AK_KT_98', 'AK_KT_99', 'AK_Rogers_175', 'AK_Rogers_176', 'AK_Rogers_177', 'AK_Rogers_178', 'AK_Rogers_179', 'AK_Rogers_180', 'AK_Rogers_181', 'AK_Rogers_182', 'AK_Rogers_183', 'AK_Rogers_184', 'AK_Rogers_185', 'AK_Rogers_186', 'AK_Rogers_187', 'AK_Rogers_188', 'AK_Rogers_189', 'AK_Rogers_190', 'AK_Rogers_191', 'AK_Rogers_192', 'AK_Rogers_193', 'AK_Rogers_194', 'AK_Rogers_196', 'AK_Rogers_197', 'Hoy_AK_275', 'Hoy_AK_276', 'Hoy_AK_277', 'Hoy_AK_279', 'Hoy_AK_280', 'Hoy_AK_281', 'Hoy_AK_282', 'Hoy_AK_283', 'Hoy_AK_284', 'Hoy_AK_285', 'Hoy_AK_286', 'Hoy_AK_287', 'Hoy_AK_288', 'Hoy_AK_290', 'Hoy_AK_297', 'Hoy_AK_298', 'Hoy_AK_299', 'JFSP_Boby_353', 'JFSP_Boby_354', 'JFSP_Boby_355', 'JFSP_Boby_356', 'JFSP_Boby_357', 'JFSP_Boby_358', 'JFSP_Boby_359', 'JFSP_Boby_360', 'JFSP_Boby_362', 'JFSP_Boby_363', 'JFSP_Boby_364', 'JFSP_Boby_365', 'JFSP_Boby_366', 'JFSP_Boby_367', 'JFSP_Boby_368', 'JFSP_Boby_369', 'JFSP_Boby_370', 'JFSP_Boby_371', 'JFSP_Boby_373', 'JFSP_Boby_374', 'JFSP_Boby_375', 'JFSP_Boby_376', 'JFSP_Boby_377', 'JFSP_Boby_378', 'JFSP_Boby_379', 'JFSP_Boby_380', 'JFSP_Boby_381', 'JFSP_Boby_382', 'JFSP_Boby_384', 'JFSP_Boby_385', 'JFSP_Boby_386', 'JFSP_Boby_387', 'JFSP_Boby_388', 'JFSP_Boby_389', 'JFSP_Boby_390', 'JFSP_Boby_391', 'JFSP_Boby_392', 'JFSP_Boby_393', 'JFSP_Boby_395')) %>%
+  bind_rows(org_id_na) %>% distinct(ID, .keep_all = TRUE) 
+)
+
+```
+
+```{r}
+dupes <- org_filled %>% 
+  filter(duplicated(ID) | duplicated(ID, fromLast = TRUE)) %>%
+  arrange(ID)
+
+dupes
+
+
 ```
 
 
-# Check for missing data
+# Select ID and twi 
 
 ```{r}
-lc_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
-fisl_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
-lcc_df %>% filter(if_any(c( twi), is.na))
-org_df %>% filter(if_any(c(above.carbon.combusted, below.ground.carbon.combusted, burn.depth, twi), is.na))
+( fisl_df = fisl_twi_clean %>% select(ID, twi)) 
+( lc_df = lc_twi_clean %>% select(ID, twi)) 
+```
+
+```{r}
+dupes <- lc_df %>% 
+  filter(duplicated(ID) | duplicated(ID, fromLast = TRUE))
+
+dupes
+```
+
+```{r}
+( lcc_df = lcc_twi %>% select(ID, twi)) 
+
+( org_df = org_filled %>% select(ID, twi))
+```
+
+
+# Save to csv
+
+```{r}
+
+write_csv(fisl_df, "../outputs/2025-08-18_cleaned/csv/2025-10-02_FISL_TWI.csv")
+write_csv(lc_df, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_TWI.csv")
+
+write_csv(lcc_df, "../outputs/2025-08-18_cleaned/csv/2025-09-14_LCC_TWI.csv")
+write_csv(org_df, "../outputs/2025-08-18_cleaned/csv/2025-09-12_ORG_TWI.csv")
 ```

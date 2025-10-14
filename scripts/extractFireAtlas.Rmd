@@ -23,29 +23,31 @@ library(sf)
 
 ## Points
 ```{r}
-points = st_read("../outputs/LCC_cleaned/points/shapefiles/lc_lcc_2025-04-24.shp", "lc_lcc_2025-04-24")
+fisl_dob_with_na = st_read("../outputs/2025-08-31_dob_na/fisl_dob_na_2025-08-31.gpkg")
+lc_dob_with_na = st_read("../outputs/2025-08-31_dob_na/lc_dob_na_2025-08-31.gpkg")
+lcc_dob_with_na = st_read("../outputs/2025-08-31_dob_na/lcc_dob_na_2025-08-31.gpkg")
+org_dob_with_na = st_read("../outputs/2025-08-31_dob_na/org_dob_na_2025-08-31.gpkg")
 ```
-```{r}
-fisl_points = st_read( "../outputs/dob_na/fisl_dob_na_2025-06-06.gpkg")
-```
+# Check Unique Fire years
 
 ```{r}
-lc_points = st_read("../outputs/dob_na/lc_dob_na_2025-06-06.gpkg")
-lcc_points = st_read("../outputs/dob_na/lcc_dob_na_2025-06-06.gpkg")
-```
-```{r}
-lcc_points
+sort(unique(fisl_dob_with_na$fireYr))
+sort(unique(lc_dob_with_na$fireYr))
+sort(unique(lcc_dob_with_na$fireYr))
+sort(unique(org_dob_with_na$fireYr))
 ```
 
+# Filter points for fire year
+
 ```{r}
-sort(unique(lc_points$fireYr))
-sort(unique(lcc_points$fireYr))
+points = fisl_dob_with_na
+( points_subset = points %>% filter(fireYr=="2020") %>% st_transform(., crs=3571) )
 ```
 
 ## Fire Atlas data
 
 ```{r}
-gpkg_files <- list.files("../data/fireAtlas/2022/Snapshot", pattern='.gpkg$', full.names=TRUE)
+gpkg_files <- list.files("../data/fireAtlas/2020/Snapshot", pattern='.gpkg$', full.names=TRUE)
 ```
 
 ```{r}
@@ -53,11 +55,9 @@ first = st_read(gpkg_files[1])
 first
 ```
 
-# Filter points for fire year
 
-```{r}
-( points_subset = lcc_points %>% filter(fireYr==2022) %>% st_transform(., crs=3571) )
-```
+
+
 
 # Function to read one gpkg and spatial join to points
 
@@ -91,14 +91,14 @@ joined_points <- bind_rows(joined_list)
 ```
 
 ```{r}
+joined_points
+```
+
+```{r}
 ( joined_dropna = joined_points %>% drop_na(tst_year, tst_month, tst_day) )
 ```
 
-
-
-
-
-# select one point per site baased on min dob
+# select one point per site based on min dob
 
 ```{r}
 ( joined_points_min_dob <- joined_points %>%
@@ -110,10 +110,6 @@ joined_points <- bind_rows(joined_list)
 
 ```
 
-
-
-
-
 ```{r eval=FALSE, include=FALSE}
-st_write(joined_points_min_dob, "../outputs/fireatlas_dob/lcc_fireAtlas_dob_2022.shp", driver="ESRI Shapefile")
+st_write(joined_points_min_dob, "../outputs/2025-08-31_fireatlas_dob/fisl/ fireAtlas_dob_2020.shp", driver="ESRI Shapefile")
 ```

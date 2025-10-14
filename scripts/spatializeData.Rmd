@@ -30,14 +30,18 @@ library(mapview)
 
 ```{r}
 org_subset = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_ORG_subsetCombustionID.csv")
-org_full = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_ORG_fullCombustionID.csv")
-
-lc_full = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LC_fullCombustionID.csv")
-lcc_subset = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LCC_subsetCombustionID.csv")
-
-lcc_full = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_LCC_fullCombustionID.csv")
-fisl_full = read_csv("../outputs/LCC_cleaned/csv/2025-08-28_FISL_fullCombustionID.csv")
+org_full = read_csv("../outputs/LCC_cleaned/csv/2025-08-30_ORG_fullCombustionID.csv")
 ```
+
+```{r}
+lcc_site = read_csv("../outputs/LCC_cleaned/csv/2025-10-09_LCC_fullCombustionID.csv")
+```
+
+```{r}
+lc_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+fisl_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
 
 
 # Spatialize
@@ -58,46 +62,90 @@ df_to_sf_NAD83 <- function(x){
 
 ## To points
 
-```{r}
-( lc_full_pts_WGS84 = lc_full %>% df_to_sf_NAD83() %>% st_transform(., crs = 4326)
-)
-```
-
-```{r}
-( lcc_subset_pts_WGS84 = lcc_subset %>%  df_to_sf_wgs84()  )
-( lcc_full_pts_WGS84 = lcc_full %>%  df_to_sf_wgs84()  )
-```
+### FISL
 
 ```{r}
 ( fisl_full_pts_WGS84 = fisl_full %>% 
     df_to_sf_NAD83() %>%
-    st_transform(., crs = 4326)
-)
+    st_transform(., crs = 4326) %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(ID, project_name, lat, lon, fireYr))
+
+```
+
+```{r}
+( fisl_site_pts_WGS84 = fisl_site %>% 
+    df_to_sf_NAD83() %>%
+    st_transform(., crs = 4326) %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(site_ID, project, lat, lon, fireYr) %>%
+  rename(ID = site_ID) )
+
+```
+```{r}
+sort(unique(fisl_site_pts_WGS84$fireYr))
+```
+
+### LC
+
+```{r}
+( lc_full_pts_WGS84 = lc_full %>% 
+    df_to_sf_NAD83() %>% 
+    st_transform(., crs = 4326) %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(ID, project_name, lat, lon, fireYr))
+```
+
+```{r}
+( lc_site_pts_WGS84 = lc_site %>% 
+    df_to_sf_NAD83() %>% 
+    st_transform(., crs = 4326) %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(site_ID, project, lat, lon, fireYr) %>%
+  rename(ID = site_ID) )
 ```
 
 
+### LCC
+
 ```{r}
-( org_subset_pts_WGS84 = org_subset %>% df_to_sf_wgs84())
-( org_full_pts_WGS84 = org_full %>% df_to_sf_wgs84())
+( lcc_site_pts_WGS84 = lcc_site %>%  
+    df_to_sf_wgs84()  %>% 
+    mutate(fireYr = as.character(fireYr)) )
+```
+
+
+### ORG
+
+```{r}
+( org_subset_pts_WGS84 = org_subset %>% 
+    df_to_sf_wgs84() %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(ID, project_name, lat, lon, fireYr))
+
+( org_full_pts_WGS84 = org_full %>% 
+    df_to_sf_wgs84() %>% 
+    mutate(fireYr = as.character(fireYr)) %>% 
+    select(ID, project_name, lat, lon, fireYr))
 
 ```
 
 # View points
 
 ```{r}
-mapview(lc_pts_WGS84)
+mapview(lc_full_pts_WGS84)
 ```
 
 ```{r}
-mapview(lcc_pts_WGS84)
+mapview(lcc_site_pts_WGS84)
 ```
 
 ```{r}
-mapview(fisl_pts_WGS84)
+mapview(fisl_full_pts_WGS84)
 ```
 
 ```{r}
-mapview(org_pts_WGS84)
+mapview(org_full_pts_WGS84)
 ```
 
 # Data for gpkg
@@ -109,12 +157,7 @@ fisl_full_gpkg = fisl_full_pts_WGS84 %>% select(-fireYr)
 org_full_gpkg = org_full_pts_WGS84 %>% select(-fireYr)
 ```
 
-# Fire years 
 
-
-```{r}
-sort(unique(fisl_pts_WGS84$fireYr))
-```
 
 # Save Spatial Data files
 
@@ -133,19 +176,24 @@ st_write(org_full_gpkg, "../outputs/combustion_pts_gpkg/org_pts_WGS84_2025-08-28
 ## shapefiles
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lc_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_lc_full_pts_WGS84.shp", driver="ESRI Shapefile")
 
-st_write(lcc_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_lcc_full_pts_WGS84.shp", driver="ESRI Shapefile")
+st_write(fisl_site_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-10-02_fisl_site_pts_WGS84.shp", driver="ESRI Shapefile")
 
-st_write(fisl_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_fisl_full_pts_WGS84.shp", driver="ESRI Shapefile")
-
-st_write(org_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_org_full_pts_WGS84.shp", driver="ESRI Shapefile")
+st_write(lc_site_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-10-03_lc_site_pts_WGS84.shp", driver="ESRI Shapefile")
 ```
 
 ```{r eval=FALSE, include=FALSE}
-st_write(lcc_subset_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_lcc_subset_pts_WGS84.shp", driver="ESRI Shapefile")
+st_write(lc_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lc_full_pts_WGS84.shp", driver="ESRI Shapefile")
 
-st_write(org_subset_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-28_org_subset_pts_WGS84.shp", driver="ESRI Shapefile")
+
+st_write(fisl_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-29_fisl_full_pts_WGS84.shp", driver="ESRI Shapefile")
+
+st_write(org_full_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-08-30_org_full_pts_WGS84.shp", driver="ESRI Shapefile")
+```
+
+```{r eval=FALSE, include=FALSE}
+st_write(lcc_site_pts_WGS84, "../outputs/LCC_cleaned/points/shapefiles/2025-10-09_lcc_full_pts_WGS84.shp", driver="ESRI Shapefile")
+
 ```
 
 ## Climate NA data frames
