@@ -1,0 +1,209 @@
+---
+title: "organize missing day of burn"
+author: "Anna Talucci"
+date: "2025-09-05"
+output: html_document
+---
+
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+## DOB
+
+```{r}
+fisl_list = list.files("../data/2025-08-08_combustion_layer_update/missing_dob/fisl", pattern='.csv$', full.names = TRUE)
+fisl_list
+```
+
+```{r}
+lc_list = list.files("../data/2025-08-08_combustion_layer_update/missing_dob/lc", pattern='.csv$', full.names = TRUE)
+lc_list
+```
+
+```{r}
+lcc_list = list.files("../data/2025-08-08_combustion_layer_update/missing_dob/lcc", pattern='.csv$', full.names = TRUE)
+lcc_list
+```
+
+## DOB from Potter data
+
+```{r}
+fisl_list_p = list.files("../data/2025-08-08_combustion_layer_update/missing_dob_potter/fisl", pattern='.csv$', full.names = TRUE)
+fisl_list_p
+```
+
+```{r}
+lc_list_p = list.files("../data/2025-08-08_combustion_layer_update/missing_dob_potter/lc", pattern='.csv$', full.names = TRUE)
+lc_list_p
+```
+
+```{r}
+lcc_list_p = list.files("../data/2025-08-08_combustion_layer_update/missing_dob_potter/lcc", pattern='.csv$', full.names = TRUE)
+lcc_list_p
+```
+
+```{r}
+org_list_p = list.files("../data/2025-08-08_combustion_layer_update/missing_dob_potter/org", pattern='.csv$', full.names = TRUE)
+org_list_p
+```
+
+# Function to read in files
+
+```{r}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, ~ {
+    readr::read_csv(.x, show_col_types = FALSE) %>%
+      dplyr::select(-dplyr::any_of("confidence")) %>%
+      dplyr::select(-dplyr::any_of("daynight")) %>%
+      dplyr::select(-dplyr::any_of("system:index"))%>%
+      dplyr::select(-dplyr::any_of(".geo")) 
+  })
+  return(csv_data)
+}
+
+
+```
+
+```{r}
+( fisl_dob = csv_rbind(fisl_list) ) 
+( lc_dob = csv_rbind(lc_list) ) 
+( lcc_dob = csv_rbind(lcc_list) ) 
+
+```
+```{r}
+( fisl_dob_p = csv_rbind(fisl_list_p) ) 
+( lc_dob_p = csv_rbind(lc_list_p) ) 
+( lcc_dob_p = csv_rbind(lcc_list_p) ) 
+( org_dob_p = csv_rbind(org_list_p) ) 
+
+```
+
+```{r}
+fisl_dob_p %>% filter(is.na(dob))
+lc_dob_p %>% filter(is.na(dob))
+lcc_dob_p %>% filter(is.na(dob))
+```
+## LC
+
+```{r}
+lc_target_id = c('LC_255', 'LC_256', 'LC_259', 'LC_260', 'LC_261', 'LC_262')
+```
+
+```{r eval=FALSE, include=FALSE}
+( lc_missing_dob = lc_dob %>% 
+  filter(ID %in% lc_target_id) %>%
+  group_by(ID) %>%
+  slice_min(acq_date, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, acq_date)
+)
+  
+```
+
+```{r}
+( lc_missing_dob_p = lc_dob_p %>% 
+  #filter(ID %in% lc_target_id) %>%
+  group_by(ID) %>%
+  slice_min(dob, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, dob, fireYr) %>%
+    rename(BurnDate = dob)
+)
+  
+```
+
+## Fisl
+
+```{r}
+fisl_traget_id = c('FISL_100', 'FISL_101', 'FISL_102', 'FISL_106', 'FISL_107', 'FISL_108', 'FISL_148', 'FISL_149', 'FISL_150', 'FISL_151', 'FISL_152', 'FISL_159', 'FISL_160', 'FISL_161', 'FISL_162', 'FISL_163', 'FISL_164', 'FISL_165', 'FISL_166', 'FISL_167', 'FISL_168', 'FISL_169', 'FISL_170', 'FISL_171', 'FISL_172', 'FISL_173', 'FISL_174', 'FISL_175', 'FISL_176', 'FISL_180', 'FISL_181', 'FISL_182', 'FISL_183', 'FISL_184', 'FISL_185', 'FISL_204', 'FISL_205', 'FISL_206', 'FISL_207', 'FISL_208', 'FISL_209', 'FISL_210', 'FISL_211', 'FISL_212', 'FISL_213', 'FISL_214', 'FISL_215', 'FISL_216', 'FISL_219', 'FISL_220', 'FISL_221', 'FISL_222', 'FISL_223', 'FISL_224', 'FISL_225', 'FISL_226', 'FISL_227', 'FISL_246', 'FISL_266', 'FISL_287', 'FISL_40', 'FISL_41', 'FISL_42', 'FISL_49', 'FISL_50', 'FISL_51', 'FISL_54', 'FISL_55', 'FISL_56', 'FISL_62', 'FISL_63', 'FISL_64', 'FISL_65', 'FISL_66', 'FISL_67', 'FISL_68', 'FISL_69', 'FISL_70', 'FISL_71', 'FISL_72', 'FISL_73', 'FISL_74', 'FISL_75', 'FISL_76', 'FISL_80', 'FISL_81', 'FISL_82', 'FISL_83', 'FISL_84', 'FISL_85', 'FISL_86', 'FISL_87', 'FISL_88', 'FISL_89', 'FISL_90', 'FISL_94', 'FISL_95', 'FISL_96', 'FISL_97', 'FISL_98', 'FISL_99')
+```
+
+```{r eval=FALSE, include=FALSE}
+( fisl_missing_dob = fisl_dob %>% 
+  filter(ID %in% fisl_traget_id) %>%
+  group_by(ID) %>%
+  slice_min(acq_date, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, acq_date)
+)
+  
+```
+
+```{r}
+( fisl_missing_dob_p = fisl_dob_p %>% 
+  #filter(ID %in% fisl_traget_id) %>%
+  group_by(ID) %>%
+  slice_min(dob, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, dob, fireYr) %>%
+    rename(BurnDate = dob)
+)
+  
+```
+
+## LCC
+
+```{r}
+lcc_target_id = c('LCC_101', 'LCC_102', 'LCC_103', 'LCC_104', 'LCC_105', 'LCC_106', 'LCC_107', 'LCC_108', 'LCC_109', 'LCC_110', 'LCC_20', 'LCC_22', 'LCC_24', 'LCC_25', 'LCC_47', 'LCC_48', 'LCC_53', 'LCC_54', 'LCC_55', 'LCC_58', 'LCC_59', 'LCC_60', 'LCC_63', 'LCC_64', 'LCC_65', 'LCC_66', 'LCC_67', 'LCC_68', 'LCC_69', 'LCC_70', 'LCC_75', 'LCC_76', 'LCC_77', 'LCC_78', 'LCC_79', 'LCC_80', 'LCC_81', 'LCC_82', 'LCC_88', 'LCC_94')
+```
+
+```{r eval=FALSE, include=FALSE}
+( LCC_missing_dob = lcc_dob %>% 
+  #filter(ID %in% lcc_target_id) %>%
+  group_by(ID) %>%
+  slice_min(acq_date, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, acq_date)
+)
+  
+```
+
+```{r}
+( LCC_missing_dob_p = lcc_dob_p %>% 
+  #filter(ID %in% lcc_target_id) %>%
+  group_by(ID) %>%
+  slice_min(dob, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, dob, fireYr) %>%
+    rename(BurnDate = dob)
+)
+  
+```
+
+## ORG
+
+```{r}
+org_target_id = c('AK_KT_106', 'AK_KT_107', 'AK_KT_118', 'AK_KT_98', 'CAN_deGroot_198', 'CAN_deGroot_209', 'CAN_deGroot_220', 'CAN_deGroot_231', 'CAN_deGroot_243', 'CAN_deGroot_244', 'CAN_deGroot_245', 'CAN_deGroot_246', 'CAN_deGroot_247', 'CAN_deGroot_248', 'CAN_deGroot_249', 'NWT_BCKE_712')
+```
+
+
+```{r}
+( org_missing_dob_p = org_dob_p %>% 
+  #filter(ID %in% org_target_id) %>%
+  group_by(ID) %>%
+  slice_min(dob, with_ties = FALSE) %>%  # keep only 1 row per ID
+  ungroup() %>% 
+  select(ID, dob, fireYr) %>%
+    rename(BurnDate = dob)
+)
+  
+```
+
+# Save final dataframes
+
+```{r}
+write_csv(LCC_missing_dob_p, "../outputs/2025-09-08_MissingDobFilled/2025-09-08_LCC_DobPotter.csv")
+write_csv(lc_missing_dob_p, "../outputs/2025-09-08_MissingDobFilled/2025-09-08_LC_DobPotter.csv")
+write_csv(fisl_missing_dob_p, "../outputs/2025-09-08_MissingDobFilled/2025-09-08_FISL_DobPotter.csv")
+write_csv(org_missing_dob_p, "../outputs/2025-09-08_MissingDobFilled/2025-09-08_ORG_DobPotter.csv")
+```

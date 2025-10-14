@@ -1,0 +1,219 @@
+---
+title: "Combine Data Walker Model"
+author: "Anna Talucci"
+date: "2025-09-23"
+output: html_document
+---
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Check missing data
+Figure for missing data
+
+Combine LC, Fisl, and ORG data
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data 
+
+## Combustion Model Data
+
+```{r}
+lc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LC_Predictors.csv")
+lcc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+```
+
+## Field Data
+
+```{r}
+lc_id = read_csv("../outputs/LCC_cleaned/csv/LC_ID_2025-08-21.csv")
+lcc_id = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
+```
+
+## Fire History
+
+```{r}
+lc_sa = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LC_standAge.csv")
+lcc_sa = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
+```
+
+```{r}
+lc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
+lcc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
+```
+
+
+# View 
+
+```{r}
+lc_df
+lcc_df
+```
+
+
+```{r}
+lc_id
+lcc_id
+```
+
+```{r}
+lc_sa
+lcc_sa
+```
+
+```{r}
+lc_fri
+lcc_fri
+```
+
+# Join Stand Age and RFI to spatial data
+
+```{r}
+( lc = lc_df %>% left_join(lc_sa, by="ID") %>% left_join(lc_fri, by="ID") )
+( lcc = lcc_df %>% 
+    left_join(lcc_sa, by="ID") %>% 
+    left_join(lcc_fri, by="ID") %>% 
+  filter(fireYr != "unknown") %>% # remove fire year unknown
+  filter(fireYr >2000) %>% # remove fire older than 2000
+  filter(ID != "LCC_47" | ID !="LCC_48") )
+```
+
+## Assess missing data
+
+```{r}
+clean_na <- function(df) {
+  df %>%
+   select(-LandCover, -landcover_name)  %>% 
+    mutate(across(everything(), ~ {
+      x <- .
+      if (is.character(x) | is.factor(x)) {
+        x <- trimws(as.character(x))        # remove extra spaces
+        x[x %in% c("", "NA", "NaN")] <- NA  # replace with real NA
+      } else if (is.numeric(x)) {
+        x[is.nan(x) | is.infinite(x)] <- NA # fix NaN, Inf
+      }
+      x
+    }))
+}  
+
+```
+
+```{r}
+missing_data_fun <- function(df){df  %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "na_count") %>%
+  arrange(desc(na_count))
+}
+```
+
+```{r}
+
+( lc_na = lc %>% clean_na() %>% missing_data_fun() %>% rename(lc_na = na_count) )
+( lcc_na = lcc %>% clean_na() %>% missing_data_fun() %>% rename(lcc_na = na_count))
+
+```
+
+```{r}
+( na_df = lc_na %>%
+    left_join(lcc_na,  by = "variable")
+)
+```
+
+```{r}
+write_csv(na_df, "../outputs/2025-09-23_MissingDataSummaryForFinalDatasetWalker.csv")
+
+```
+
+# missing RFI and stand age
+
+```{r}
+lcc_na_sa = lcc %>% filter(is.na(standAge))
+lcc %>% filter(is.na(fri))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_na_sa$ID))), collapse = ", "))
+```
+
+# Join field data info
+
+```{r}
+( lc_full = lc %>%
+  rename_with(~ paste0("sp_", .)) %>% 
+    rename(ID=sp_ID) %>% 
+    left_join(lc_id, by="ID") )
+( lcc_full = lcc %>% 
+  rename_with(~ paste0("sp_", .)) %>% 
+    rename(ID=sp_ID)  %>% 
+    left_join(lcc_id, by="ID") )
+```
+
+```{r}
+lcc_full %>% filter(ID %in% c('LCC_100', 'LCC_20', 'LCC_21', 'LCC_22', 'LCC_23', 'LCC_24', 'LCC_25', 'LCC_26', 'LCC_27', 'LCC_28', 'LCC_29', 'LCC_55', 'LCC_56', 'LCC_57', 'LCC_58', 'LCC_59', 'LCC_60', 'LCC_61', 'LCC_62', 'LCC_63', 'LCC_64', 'LCC_70', 'LCC_82'))
+```
+
+```{r}
+lcc_full %>% filter(researcher =="Lucas Brehaut")
+```
+
+# Fill in NA
+
+
+```{r}
+# Replace NA for LCC_62 with 
+lcc_full$standAge[is.na(lcc_full$standAge) & lcc_full$ID == "LCC_82"] <- 100
+```
+
+
+# Summarize Missing data
+
+## Over all summary
+summarise(
+    non_missing_rows = sum(apply(., 1, function(row) 
+      all(!is.na(row) & row != "" & row != "NA")
+    ))
+  )
+  
+```{r}
+clean_na <- function(df) {
+  df %>%
+    mutate(across(everything(), ~ {
+      x <- .
+      if (is.character(x) | is.factor(x)) {
+        x <- trimws(as.character(x))        # remove extra spaces
+        x[x %in% c("", "NA", "NaN")] <- NA  # replace with real NA
+      } else if (is.numeric(x)) {
+        x[is.nan(x) | is.infinite(x)] <- NA # fix NaN, Inf
+      }
+      x
+    }))
+}  
+
+```
+
+```{r}
+missing_data_fun <- function(df){df  %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "na_count") %>%
+  arrange(desc(na_count))
+}
+```
+
+```{r}
+( fisl_na = fisl_df %>% clean_na() %>% missing_data_fun() %>% rename(fisl_na = na_count) )
+( lc_na = lc_df %>% clean_na() %>% missing_data_fun() %>% rename(lc_na = na_count) )
+( lcc_na = lcc %>% clean_na() %>% missing_data_fun() %>% rename(lcc_na = na_count))
+( org_na = org_df %>% clean_na() %>% missing_data_fun() %>% rename(org_na = na_count) )
+```

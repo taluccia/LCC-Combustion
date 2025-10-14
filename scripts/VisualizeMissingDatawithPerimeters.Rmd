@@ -1,0 +1,181 @@
+---
+title: "Visualize Missing Data with fire perimeters"
+author: "Anna Talucci"
+date: "2025-09-17"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+visualize missing dob with fire perimeters
+
+# Packages
+
+```{r}
+library(tidyverse)
+library(sf)
+library(mapview)
+```
+
+# Data
+
+## Field Points
+
+```{r}
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lc_full_pts_WGS84.shp")
+
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lcc_full_pts_WGS84.shp",)
+
+```
+
+
+## Fire perimeters
+
+### Canadian Fire database
+
+```{r}
+CAN_fires = st_read("../data/perimeters/NBAC_1972to2024_20250506_shp/NBAC_1972to2024_20250506.shp")
+```
+
+### AK Fire history Polygons
+
+```{r}
+
+
+gdb_path <- "../data/perimeters/AlaskaFireHistory_Polygons.gdb"
+
+# See all layers available
+st_layers(gdb_path)
+
+```
+
+
+
+```{r}
+AK_fires <- st_read(gdb_path)
+```
+
+
+
+# View Data
+
+```{r}
+AK_fires
+CAN_fires
+```
+
+# Subset data
+
+```{r}
+( ak_poly = AK_fires %>% select(NAME, FIREID, FIREYEAR) )
+( can_poly = CAN_fires %>% select(YEAR, NFIREID) )
+```
+
+```{r}
+ak_poly <- st_cast(ak_poly, "MULTIPOLYGON")
+```
+# Process for AK fires
+
+# Make sure both are in the same CRS
+
+```{r}
+lc_points_ak <- st_transform(lc_pts, st_crs(ak_poly))
+lcc_points_ak <- st_transform(lcc_pts, st_crs(ak_poly))
+```
+
+
+
+
+# Process for Canada fires
+
+# Make sure both are in the same CRS
+
+```{r}
+lc_points_ca <- st_transform(lc_pts, st_crs(can_poly))
+lcc_points_ca <- st_transform(lcc_pts, st_crs(can_poly))
+```
+
+
+# View on map
+
+##  LC 
+
+```{r}
+lc_sameFire = lc_points_ak %>% filter(ID %in% c('LC_106', 'LC_107', 'LC_108', 'LC_109', 'LC_110', 'LC_111', 'LC_114', 'LC_115', 'LC_116', 'LC_117', 'LC_119', 'LC_120'))
+```
+
+```{r}
+lc_missing = lc_points_ak %>% filter(ID %in% c('LC_112', 'LC_113', 'LC_118'))
+```
+
+```{r}
+(fires = ak_poly %>% filter(FIREID %in% c(40130, 69041)) )
+```
+```{r}
+(fires1996 = ak_poly %>% filter(FIREYEAR == 1996) )
+```
+
+```{r}
+mapview(fires, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(lc_missing, col.regions = "red", cex = 4) +
+  mapview(lc_sameFire, col.regions = "yellow", cex = 4)
+```
+
+
+## LCC
+
+```{r}
+lcc_missing_can = lcc_points_ca %>% filter(ID %in% c('LCC_22',  'LCC_53', 'LCC_54', 'LCC_55', 'LCC_63', 'LCC_65', 'LCC_66', 'LCC_67', 'LCC_68', 'LCC_69'))
+lcc_missing_ak = lcc_points_ak %>% filter(ID %in% c('LCC_47', 'LCC_48'))
+```
+
+```{r}
+can_fires = can_poly %>% filter(YEAR %in% c(2006, 2018, 2019))
+```
+
+```{r}
+ak_others = lcc_points_ak %>% filter(ID %in% c('LCC_40', 'LCC_41', 'LCC_42', 'LCC_43', 'LCC_44', 'LCC_45', 'LCC_46', 'LCC_47', 'LCC_48'))
+```
+
+```{r}
+can_other = lcc_points_ca %>% filter(ID %in% c('LCC_49', 'LCC_50', 'LCC_51', 'LCC_52', 'LCC_53', 'LCC_54', 'LCC_65', 'LCC_66', 'LCC_67', 'LCC_68', 'LCC_69', 'LCC_70', 'LCC_71', 'LCC_72', 'LCC_73', 'LCC_74'))
+```
+
+
+```{r}
+sweden_other = lcc_points_ca %>% filter(ID %in% c('LCC_20', 'LCC_21', 'LCC_22', 'LCC_23', 'LCC_24', 'LCC_25', 'LCC_26', 'LCC_27', 'LCC_28', 'LCC_29', 'LCC_55', 'LCC_56', 'LCC_57', 'LCC_58', 'LCC_59', 'LCC_60', 'LCC_61', 'LCC_62', 'LCC_63', 'LCC_64'))
+```
+
+```{r}
+mapview(fires1996, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(ak_others, col.regions = "yellow", cex = 4) +
+  mapview(lcc_missing_ak, col.regions = "red", cex = 4) 
+```
+
+```{r}
+mapview(can_fires, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(can_other, col.regions = "yellow", cex = 3) +
+  mapview(lcc_missing, col.regions = "red", cex = 3) 
+```
+
+
+
+```{r}
+mapview(can_fires, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(sweden_other, col.regions = "yellow", cex = 3) +
+  mapview(lcc_missing, col.regions = "red", cex = 3) 
+```
+
+
+
+
+
+
+
+
+
+

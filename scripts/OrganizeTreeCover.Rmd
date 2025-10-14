@@ -1,0 +1,191 @@
+---
+title: "Organize Canopy Cover"
+author: "Anna Talucci"
+date: "2025-09-18"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview 
+
+Move out of Organize Spectral Indices 
+
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data
+
+## Version 1
+
+```{r}
+fisl_tree_v1 = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/FISL_treeCover.csv")
+lc_tree_v1 = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/LC_treeCover.csv")
+lcc_tree_v1 = read_csv("../data/2025-08-08_combustion_layer_update/indices/LCC_treeCover.csv")
+org_tree_v1 = read_csv("../data/2025-08-08_combustion_layer_update/indices/ORG_treeCover.csv")
+```
+
+```{r}
+fisl_tree_v2 = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/GFCC30TC_FISL.csv")
+lc_tree_v2 = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/GFCC30TC_LC.csv")
+lcc_tree_v2 = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-17_GFCC30TC_treeCover/GFCC30TC_LCC.csv")
+org_tree_v2 = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-17_GFCC30TC_treeCover/GFCC30TC_ORG.csv")
+```
+
+
+# View
+
+```{r}
+fisl_tree_v1
+lc_tree_v1
+lcc_tree_v1
+org_tree_v1
+```
+
+```{r}
+fisl_tree_v2
+lc_tree_v2
+lcc_tree_v2
+org_tree_v2
+```
+
+# CLean
+
+## V1 
+
+```{r}
+fisl_v1_s = fisl_tree_v1 %>% select(ID, tree_canopy_cover)
+lc_v1_s = lc_tree_v1 %>% select(ID, tree_canopy_cover)
+lcc_v1_s = lcc_tree_v1 %>% select(ID, tree_canopy_cover)
+org_v1_s = org_tree_v1 %>% select(ID, tree_canopy_cover)
+```
+
+## V2
+%>%
+  mutate(
+    epoch = case_when(
+      fireYr >= 2000 & fireYr < 2008 ~ 1,
+      fireYr >= 2008 & fireYr < 2012 ~ 2,
+      fireYr >= 2012 & fireYr < 2018 ~ 3,
+      fireYr >= 2018                 ~ 4,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  group_by(id) %>%
+  summarize(
+    fireYr = first(fireYr),     # or min/max depending on your rule
+    epoch  = first(epoch),
+    value  = first(value),      # replace `value` with your column of interest
+    .groups = "drop"
+  )
+```{r}
+v2_clean_pivot_select <- function(df1){df1 %>% 
+      select(ID, fireYr, GFCC30TC_2000_V4_b1, GFCC30TC_2005_V4_b1, GFCC30TC_2010_V4_b1, GFCC30TC_2015_V4_b1) %>%
+    rename(b2000 = GFCC30TC_2000_V4_b1, b2005 = GFCC30TC_2005_V4_b1, b2010 = GFCC30TC_2010_V4_b1, b2015 = GFCC30TC_2015_V4_b1 ) %>%
+    pivot_longer(cols = starts_with("b"),
+    names_to = "timePeriod",
+    values_to = "tree_cover",
+    values_drop_na = TRUE) 
+
+}
+```
+
+```{r}
+( fisl_v2_s = fisl_tree_v2 %>% v2_clean_pivot_select() )
+lc_v2_s = lc_tree_v2 %>% v2_clean_pivot_select() 
+lcc_v2_s = lcc_tree_v2 %>% v2_clean_pivot_select() 
+org_v2_s = org_tree_v2 %>% v2_clean_pivot_select() 
+```
+
+# Summarize
+
+## By Max 
+
+```{r}
+func_sum <- function(df1){df1 %>%
+    group_by(ID, fireYr) %>%
+    summarise(
+    canopy_list = paste(unique(tree_cover), collapse = ","),
+    max_canopy = max(tree_cover),
+    .groups = "drop")
+}
+```
+
+```{r}
+fisl_v2_s %>% func_sum() %>% left_join(lc_v1_s, by = "ID")
+lc_v2_s %>% func_sum() %>% left_join(lc_v1_s, by = "ID")
+lcc_v2_s %>% func_sum() %>% left_join(lcc_v1_s, by = "ID")
+org_v2_s %>% func_sum() %>% left_join(org_v1_s, by = "ID")
+```
+
+## By Epoch
+
+```{r}
+func_byEpoch <- function(df1){df1 %>% 
+    mutate(
+    epoch = case_when(
+      fireYr >= 2000 & fireYr < 2008 ~ 1L,
+      fireYr >= 2008 & fireYr < 2012 ~ 2L,
+      fireYr >= 2012 & fireYr < 2018 ~ 3L,
+      fireYr >= 2018                 ~ 4L
+    ),
+    timePeriod = case_when(
+      epoch == 1 ~ "b2000",
+      epoch == 2 ~ "b2005",
+      epoch == 3 ~ "b2010",
+      epoch == 4 ~ "b2015"
+    )
+  ) %>%
+  group_by(ID) %>%
+  slice(1) %>%   # keep just one row per ID
+  ungroup()
+}
+```
+
+```{r}
+( fisl_epoch = fisl_v2_s %>% func_byEpoch() %>% left_join(fisl_v1_s, by = "ID") %>% arrange(fireYr) )
+( lc_epoch = lc_v2_s %>% func_byEpoch() %>% left_join(lc_v1_s, by = "ID") %>% arrange(fireYr) )
+( lcc_epoch = lcc_v2_s %>% func_byEpoch() %>% left_join(lcc_v1_s, by = "ID") %>% arrange(fireYr) )
+( org_epoch = org_v2_s %>% func_byEpoch() %>% left_join(org_v1_s, by = "ID") %>% arrange(fireYr) )
+```
+
+# check missing
+
+```{r}
+fisl_epoch %>% filter(fireYr > 2000) %>% filter(is.na(tree_cover))
+lc_epoch %>% filter(fireYr > 2000) %>% filter(is.na(tree_cover))
+lcc_epoch %>% filter(fireYr > 2000) %>% filter(is.na(tree_cover))
+org_epoch %>% filter(fireYr > 2000) %>% filter(is.na(tree_cover))
+```
+
+# Final df to save
+
+```{r}
+( fisl_tc = fisl_epoch %>% select(ID, tree_cover) )
+( lc_tc = lc_epoch %>% select(ID, tree_cover) )
+( lcc_tc = lcc_epoch %>% select(ID, tree_cover) )
+( org_tc = org_epoch %>% select(ID, tree_cover) )
+```
+# save
+
+```{r}
+
+write_csv(fisl_tc, "../outputs/2025-08-18_cleaned/csv/2025-10-02_TreeCover_FISL.csv")
+write_csv(lc_tc, "../outputs/2025-08-18_cleaned/csv/2025-10-03_TreeCover_LC.csv")
+
+write_csv(lcc_tc, "../outputs/2025-08-18_cleaned/csv/2025-09-18_TreeCover_LCC.csv")
+write_csv(org_tc, "../outputs/2025-08-18_cleaned/csv/2025-09-18_TreeCover_ORG.csv")
+```
+
+
+
+

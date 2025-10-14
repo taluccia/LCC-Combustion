@@ -1,0 +1,267 @@
+---
+title: "Stand age from Fire perimeters"
+author: "Anna Talucci"
+date: "2025-09-17"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Calculate stand age at time of sampling based on most recent fire perimeter overlap. 
+
+# Packages
+
+```{r}
+library(tidyverse)
+library(sf)
+library(mapview)
+```
+
+# Data
+
+## Field Points
+
+```{r}
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lc_full_pts_WGS84.shp")
+
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lcc_full_pts_WGS84.shp",)
+
+```
+
+
+## Fire perimeters
+
+### Canadian Fire database
+
+```{r}
+CAN_fires = st_read("../data/perimeters/NBAC_1972to2024_20250506_shp/NBAC_1972to2024_20250506.shp")
+```
+
+### AK Fire history Polygons
+
+```{r}
+
+
+gdb_path <- "../data/perimeters/AlaskaFireHistory_Polygons.gdb"
+
+# See all layers available
+st_layers(gdb_path)
+
+```
+
+
+
+```{r}
+AK_fires <- st_read(gdb_path)
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+plot(st_geometry(AK_fires_sf))
+
+```
+
+# View Data
+
+```{r}
+AK_fires
+CAN_fires
+```
+
+# Subset data
+
+```{r}
+( ak_poly = AK_fires %>% select(NAME, FIREID, FIREYEAR) )
+( can_poly = CAN_fires %>% select(YEAR, NFIREID) )
+```
+
+```{r}
+ak_poly <- st_cast(ak_poly, "MULTIPOLYGON")
+```
+# Process for AK fires
+
+# Make sure both are in the same CRS
+
+```{r}
+lc_points <- st_transform(lc_pts, st_crs(ak_poly))
+lcc_points <- st_transform(lcc_pts, st_crs(ak_poly))
+```
+
+# Spatial join: adds polygon attributes to each point
+
+```{r}
+lc_points_with_poly <- st_join(lc_points, ak_poly)
+```
+
+```{r}
+lc_points_with_poly
+```
+
+```{r}
+lcc_points_with_poly <- st_join(lcc_points, ak_poly)
+```
+
+```{r}
+lcc_points_with_poly
+```
+
+
+# Process for Canada fires
+
+# Make sure both are in the same CRS
+
+```{r}
+lc_points_ca <- st_transform(lc_pts, st_crs(can_poly))
+lcc_points_ca <- st_transform(lcc_pts, st_crs(can_poly))
+```
+
+# Spatial join: adds polygon attributes to each point
+
+```{r}
+lc_points_with_poly_ca <- st_join(lc_points_ca, can_poly)
+```
+
+```{r}
+lc_points_with_poly_ca
+```
+
+```{r}
+lcc_points_with_poly_ca <- st_join(lcc_points_ca, can_poly)
+```
+
+```{r}
+lcc_points_with_poly_ca
+```
+
+# View on map
+
+
+
+```{r eval=FALSE, include=FALSE}
+mapview(ak_poly, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(lc_points, col.regions = "red", cex = 4) 
+```
+
+```{r eval=FALSE, include=FALSE}
+mapview(can_poly, col.regions = "lightblue", alpha.regions = 0.5) +
+  mapview(lcc_points, col.regions = "red", cex = 2)
+```
+
+# Drop NA and recombine
+
+## LC Data
+
+```{r}
+lc_points_with_poly %>% drop_na(FIREID)
+```
+
+```{r}
+dupes <- lc_points_with_poly %>% 
+  filter(duplicated(ID) | duplicated(ID, fromLast = TRUE))
+
+dupes
+
+
+```
+
+
+```{r}
+
+( lc_df = lc_points_with_poly %>% 
+  drop_na(FIREID) %>%
+  select(ID, FIREYEAR) %>%
+  st_drop_geometry() %>%
+  group_by(ID) %>%
+  summarise(
+    fhFireYr = paste(unique(FIREYEAR), collapse = ","),
+    .groups = "drop") %>%
+  separate(fhFireYr, into = c("fireYr1", "fireYr2", "fireYr3"), 
+           sep = ",", fill = "right", extra = "drop", remove = FALSE) %>%
+  mutate(standAge = as.numeric(fireYr1)-as.numeric(fireYr2)) %>%
+  mutate(standAge = ifelse(is.na(standAge), 100, standAge))
+)
+  
+```
+
+
+
+
+## LCC data
+
+```{r}
+( lcc_sum_ak = lcc_points_with_poly %>% 
+  drop_na(FIREID) %>%
+  select(ID, FIREYEAR) %>%
+  st_drop_geometry() %>%
+  group_by(ID) %>%
+  summarise(
+    fhFireYr = paste(unique(FIREYEAR), collapse = ","),
+    .groups = "drop") %>%
+  separate(fhFireYr, into = c("fireYr1", "fireYr2", "fireYr3"), 
+           sep = ",", fill = "right", extra = "drop", remove = FALSE) %>%
+  mutate(standAge = as.numeric(fireYr1)-as.numeric(fireYr2)) %>%
+  mutate(standAge = ifelse(is.na(standAge), 100, standAge))
+)
+```
+
+```{r}
+( lcc_sum_can = lcc_points_with_poly_ca %>% 
+  drop_na(NFIREID) %>%
+  select(ID, YEAR) %>%
+  st_drop_geometry() %>%
+  group_by(ID) %>%
+  summarise(
+    fhFireYr = paste(unique(YEAR), collapse = ","),
+    .groups = "drop") %>%
+  separate(fhFireYr, into = c("fireYr1", "fireYr2", "fireYr3"), 
+           sep = ",", fill = "right", extra = "drop", remove = FALSE) %>%
+  mutate(standAge = as.numeric(fireYr1)-as.numeric(fireYr2)) %>%
+  mutate(standAge = ifelse(is.na(standAge), 100, standAge)) )
+
+```
+
+```{r}
+lcc_pts_df = lcc_pts %>% st_drop_geometry()
+```
+
+```{r}
+( lcc_bind = bind_rows(lcc_sum_ak, lcc_sum_can) )
+
+( lcc_sa = lcc_pts_df %>% full_join(lcc_bind, by="ID") )
+```
+
+```{r}
+lcc_sa %>% filter(is.na(standAge))
+```
+## LC
+```{r}
+lc_pts_df = lc_pts %>% st_drop_geometry()
+```
+
+```{r}
+
+
+( lc_sa = lc_pts_df %>% full_join(lc_df, by="ID") )
+```
+
+# Final stand age
+
+```{r}
+( lcc_final = lcc_sa %>% select(ID, standAge) )
+```
+
+```{r}
+(lc_final = lc_sa %>% select(ID, standAge) )
+```
+
+
+```{r}
+write_csv(lc_final, "../outputs/2025-08-18_cleaned/csv/2025-09-17_LC_standAge.csv")
+write_csv(lcc_final, "../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
+
+```

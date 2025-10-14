@@ -1,0 +1,230 @@
+---
+title: "Organize Day of Burn"
+author: "Anna Talucci"
+date: "2025-08-29"
+output: html_document
+---
+
+# Overview
+
+Combine CSV files at project level for combustion model and for day of burn data from EE outputs.
+
+This is from Modis and trouble shooting the missing data. 
+
+Probably can be delete with data now being pulled from Potter dob burn data
+
+Feeds into `OrganizeBurnDate.Rmd`
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data 
+
+## Site points
+
+```{r}
+org_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-30_org_full_pts_WGS84.shp")
+lcc_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-10-09_lcc_full_pts_WGS84.shp")
+```
+
+```{r}
+lc_site = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-09-30_lc_site_pts_WGS84.shp")
+fisl_site = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-09-30_fisl_site_pts_WGS84.shp") 
+```
+
+## DOB
+
+Day of burn from EE extract.
+
+```{r}
+fisl_dob_list = list.files("../data/2025-08-08_combustion_layer_update/2025-10-02_fisl_dob", pattern='.csv$', full.names = TRUE)
+fisl_dob_list
+```
+
+```{r}
+lc_dob_list = list.files("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/dob", pattern='.csv$', full.names = TRUE)
+lc_dob_list
+```
+
+```{r}
+lcc_dob_list = list.files("../data/2025-08-08_combustion_layer_update/2025-10-09_lcc_dob", pattern='.csv$', full.names = TRUE)
+lcc_dob_list
+```
+
+
+```{r}
+org_dob_list = list.files("../data/2025-08-08_combustion_layer_update/dob/org", pattern='.csv$', full.names = TRUE)
+org_dob_list
+```
+
+```{r}
+lcc_sweden_dob = read_csv("../data/lcc_sweden_dob/eckdahl_LLC.csv")
+```
+
+## Missing day of burn from Potter data
+
+```{r}
+lcc_missing_dob_p = read_csv("../outputs/2025-09-08_MissingDobFilled/2025-09-08_LCC_DobMissing.csv")
+#lc_missing_dob_p = read_csv("../outputs/2025-09-08_MissingDobFilled/2025-09-08_LC_DobMissing.csv")
+#fisl_missing_dob_p = read_csv("../outputs/2025-09-08_MissingDobFilled/2025-09-08_FISL_DobMissing.csv")
+org_missing_dob_p = read_csv("../outputs/2025-09-08_MissingDobFilled/2025-09-08_ORG_DobMissing.csv")
+```
+```{r}
+lcc_missing_dob_p
+lcc_sweden_dob
+```
+
+# Read list of files 
+
+## Functions for csv list
+
+```{r}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, readr::read_csv)
+  return(csv_data)
+}
+
+```
+
+```{r}
+csv_cbind <- function(file_list, id_col = "ID") {
+  
+  # Read and join using reduce with left_join by ID
+  data_list <- purrr::map(file_list, ~readr::read_csv(.x, show_col_types = FALSE))
+  
+  # Ensure ID column exists in all files
+  data_list <- purrr::map(data_list, ~dplyr::select(., dplyr::all_of(id_col), dplyr::everything()))
+  
+  # Join all data frames by ID
+  joined_data <- purrr::reduce(data_list, ~dplyr::full_join(.x, .y, by = id_col))
+  
+  return(joined_data)
+}
+
+```
+
+
+## dob
+
+```{r}
+( fisl_dob = csv_rbind(fisl_dob_list) %>% select(ID, dob, fireYr) %>% relocate(ID) %>% rename(BurnDate = dob) ) 
+( lc_dob = csv_rbind(lc_dob_list) %>% select(ID, dob, fireYr) %>% relocate(ID) %>% rename(BurnDate = dob) ) 
+( lcc_dob = csv_rbind(lcc_dob_list) %>% select(ID, dob, fireYr) %>% relocate(ID) %>% rename(BurnDate = dob) ) 
+( org_dob = csv_rbind(org_dob_list) ) 
+```
+
+```{r}
+write_csv(lc_dob, "../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-03_LC_Sites_DoB.csv")
+write_csv(fisl_dob, "../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-02_FISL_Sites_DoB.csv")
+write_csv(lcc_dob, "../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-10_LCC_Sites_DoB.csv")
+```
+
+
+
+# clean data
+
+## functions
+
+```{r}
+clean_rbind = function(df){
+  df %>%
+    select(-.geo) %>%
+    select(-`system:index`) %>%
+    select(ID, BurnDate, fireYr) %>%
+    relocate(ID)
+}
+```
+
+## add missing data
+
+```{r}
+lcc_missing_dob_p
+
+org_missing_dob_p 
+```
+
+## dob
+
+```{r}
+( lcc_dob_clean = clean_rbind(lcc_dob) %>% bind_rows(lcc_missing_dob_p)  )
+( org_dob_clean = clean_rbind(org_dob) %>% bind_rows(org_missing_dob_p) )
+
+```
+
+
+
+
+
+
+## Function with full DF
+
+```{r}
+combine_dob_to_full  = function(full, dob) {
+  join_data = full_join(full, dob, by="ID") %>%
+    select(-contains(".y")) %>%
+    rename_with(~ gsub("\\.x$", "", .x), ends_with(".x")) %>%
+    select(ID:lon, fireYr, BurnDate)
+}
+```
+
+```{r}
+( fisl_dob_df = combine_dob_to_full(fisl_site, fisl_dob) )
+
+( lc_dob_df = combine_dob_to_full(lc_site, lc_dob) )
+
+( lcc_dob_df = combine_dob_to_full(lcc_full, lcc_dob_clean) )
+
+( org_dob_df = combine_dob_to_full(org_full, org_dob_clean) )
+```
+
+
+```{r}
+( fisl_dob_with_na <- fisl_dob_df %>% filter(is.na(BurnDate)) ) 
+( lc_dob_with_na <- lc_dob_df %>%  filter(is.na(BurnDate)) ) 
+( lcc_dob_with_na <- lcc_dob_df %>% filter(is.na(BurnDate)) ) 
+( org_dob_with_na <- org_dob_df %>% filter(is.na(BurnDate)) ) 
+```
+
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(fisl_dob_with_na$ID))), collapse = ", "))
+```
+
+```{r}
+sort(unique(fisl_dob_with_na$fireYr))
+sort(unique(lc_dob_with_na$fireYr))
+sort(unique(lcc_dob_with_na$fireYr))
+sort(unique(org_dob_with_na$fireYr))
+```
+
+
+# DOB for FWI
+
+## FIll in
+
+LCC_55 = 162?
+
+
+## Drop NA and save
+```{r}
+( fisl_dob_drop_na <- fisl_dob_df %>% drop_na(BurnDate) )
+
+( lc_dob_drop_na <- lc_dob_df %>% drop_na(BurnDate) )
+
+( lcc_dob_drop_na <- lcc_dob_df %>% drop_na(BurnDate) )
+
+( org_dob_drop_na <- org_dob_df %>% drop_na(BurnDate) )
+```
+
+```{r}
+fisl_dob_drop_na
+lc_dob_drop_na
+lcc_dob_drop_na
+org_dob_drop_na
+```
+
+

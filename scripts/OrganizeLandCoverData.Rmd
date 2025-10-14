@@ -1,0 +1,311 @@
+---
+title: "Organize Landcover data"
+author: "Anna Talucci"
+date: "2025-09-01"
+output: html_document
+---
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Combine spatial data in to single dataframe
+
+
+color help
+http://vrl.cs.brown.edu/color
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+landcover_list = list.files(path="../data/2025-08-08_combustion_layer_update/landCover", pattern='*.csv', full.names = TRUE)
+landcover_list
+```
+
+```{r}
+org_fillin = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-23_ORG_LandCover_odd_FillInAssign.csv")
+```
+
+```{r}
+
+fisl_sites = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/FISL_LandCover.csv")
+lc_sites = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/LC_LandCover.csv")
+```
+
+
+
+# Read and combine data frame list
+
+```{r}
+(lcc= read_csv(landcover_list[3]))
+(org= read_csv(landcover_list[4]))
+```
+
+```{r}
+clean_pivot <- function(df) {
+  df %>% 
+  select(-`system:index`, -.geo) %>%
+  mutate(preFireYr = fireYr-1) %>%
+  pivot_longer(
+    cols = starts_with("yr"),
+    names_to = "year",
+    values_to = "LandCover",
+    values_drop_na = TRUE) %>%
+  separate_wider_delim(year, "_", names = c("yr", "lcYr")) %>%
+  select(-yr) %>%
+    mutate(lcYr = as.numeric(lcYr))
+}
+
+```
+
+```{r}
+clean_pivot_ch <- function(df) {
+  df %>% 
+    mutate(fireYr = as.numeric(fireYr)) %>%
+  select(-`system:index`, -.geo) %>%
+  mutate(preFireYr = fireYr-1) %>%
+  pivot_longer(
+    cols = starts_with("yr"),
+    names_to = "year",
+    values_to = "LandCover",
+    values_drop_na = TRUE) %>%
+  separate_wider_delim(year, "_", names = c("yr", "lcYr")) %>%
+  select(-yr) %>%
+    mutate(lcYr = as.numeric(lcYr))
+}
+
+```
+
+```{r}
+( fisl_longFormat = fisl_sites %>% clean_pivot())
+( lc_longFormat = lc_sites %>% clean_pivot())
+( lcc_longFormat = lcc %>% clean_pivot_ch())
+( org_longFormat = org %>% clean_pivot())
+  
+
+```
+
+### Look at odd lc classes
+
+```{r}
+target_ID = c('AK_KT_132', 'AK_KT_135', 'AK_KT_150', 'AK_KT_22', 'AK_KT_7', 'CAN_deGroot_209', 'CAN_deGroot_220', 'NWT_BCKE_398', 'NWT_BCKE_399', 'NWT_BCKE_400', 'NWT_BCKE_402', 'NWT_BCKE_403', 'NWT_BCKE_404', 'NWT_BCKE_405', 'NWT_BCKE_406', 'NWT_BCKE_407', 'NWT_BCKE_420', 'NWT_BCKE_421', 'NWT_BCKE_423', 'NWT_BCKE_424', 'NWT_BCKE_425', 'NWT_BCKE_438', 'NWT_BCKE_439', 'NWT_BCKE_440', 'NWT_BCKE_441', 'NWT_BCKE_442', 'NWT_BCKE_443', 'NWT_BCKE_444', 'NWT_BCKE_445', 'NWT_BCKE_446', 'NWT_BCKE_447', 'NWT_BCKE_448', 'NWT_BCKE_449', 'NWT_BCKE_483', 'NWT_BCKE_589', 'NWT_BCKE_606', 'NWT_BCKE_613', 'NWT_BCKE_648', 'NWT_BCKE_651', 'NWT_BCKE_659', 'NWT_BCKE_660', 'NWT_BCKE_661', 'NWT_BCKE_662', 'NWT_BCKE_663', 'NWT_BCKE_665', 'NWT_BCKE_672', 'NWT_BCKE_678', 'NWT_BCKE_681', 'NWT_BCKE_682', 'NWT_BCKE_684', 'NWT_BCKE_685', 'NWT_BCKE_687', 'NWT_BCKE_688', 'NWT_BCKE_689', 'NWT_BCKE_690', 'NWT_BCKE_692', 'NWT_BCKE_694', 'NWT_BCKE_695', 'NWT_BCKE_696', 'NWT_BCKE_698', 'NWT_BCKE_699', 'NWT_BCKE_700', 'NWT_BCKE_701', 'NWT_BCKE_702', 'NWT_BCKE_703', 'NWT_BCKE_712', 'NWT_BCKE_713', 'NWT_BCKE_716', 'NWT_BCKE_717', 'NWT_MackWalker_718', 'NWT_MackWalker_720', 'NWT_MackWalker_732', 'NWT_MackWalker_733', 'NWT_MackWalker_745', 'NWT_MackWalker_746', 'NWT_MackWalker_899', 'SK_RTJ_1006')
+```
+
+```{r}
+( org_landcoverOdd_coalesce = org_longFormat %>% filter(ID %in% target_ID) %>%
+    group_by(ID, fireYr) %>%
+  arrange(lcYr) %>%
+    summarise(
+    landcover_list = paste(LandCover, collapse = ","),
+    years = paste(lcYr, collapse = ", "),
+    min_landcover = min(LandCover),
+    .groups = "drop")
+)
+
+```
+
+```{r}
+write_csv(org_landcoverOdd_coalesce, "../outputs/2025-09-22_ORG_LandCover_odd_coalesce.csv")
+```
+
+```{r}
+( org_landcover_odd_summary = org_longFormat %>%
+  filter(ID %in% target_ID) %>%
+  filter(between(LandCover, 60, 155)) %>%          # keep only landcover in range
+  group_by(ID, fireYr) %>%                                # group by ID (or region)
+  summarise(landcover_list = paste(unique(LandCover), collapse = ","),
+            min_landcover = min(LandCover),
+            years = paste(lcYr, collapse = ", "), # list years as string
+            n_years = n())   
+  
+)
+```
+
+```{r}
+write_csv(org_landcover_odd_summary, "../outputs/2025-09-22_ORG_LandCover_odd_summary.csv")
+```
+
+### Get unique ID was odd classes
+
+```{r}
+org_na_fireYr = org_longFormat %>% filter(ID %in% target_ID)
+sort(unique(org_na_fireYr$fireYr))
+```
+  
+## Select LC class
+
+```{r}
+select_LandCover <- function(df){ 
+  df %>% 
+  filter(preFireYr == lcYr)
+}
+
+```
+
+```{r}
+( fisl_landcover = fisl_longFormat %>% select_LandCover() )
+( lc_landcover = lc_longFormat %>% select_LandCover() )
+( lcc_landcover = lcc_longFormat %>% select_LandCover() )
+( org_landcover = org_longFormat %>% select_LandCover() )
+
+```
+
+```{r}
+sort(unique(fisl_landcover$LandCover))
+sort(unique(lc_landcover$LandCover))
+sort(unique(lcc_landcover$LandCover))
+sort(unique(org_landcover$LandCover))
+
+```
+
+61	Open deciduous broadleaved forest (0.15<fc<0.4)	
+62	Closed deciduous broadleaved forest (fc>0.4)	
+71	Open evergreen needle-leaved forest (0.15< fc <0.4)		
+72	Closed evergreen needle-leaved forest (fc >0.4)	
+81	Open deciduous needle-leaved forest (0.15< fc <0.4)		
+82	Closed deciduous needle-leaved forest (fc >0.4)	
+91	Open mixed leaf forest (broadleaved and needle-leaved)	
+92	Closed mixed leaf forest (broadleaved and needle-leaved)	
+120	Shrubland	
+121	Evergreen shrubland		
+122	Deciduous shrubland		
+130	Grassland		
+140	Lichens and mosses		
+150	Sparse vegetation (fc<0.15)	
+152	Sparse shrubland (fc<0.15)		
+153	Sparse herbaceous (fc<0.15)		
+181	Swamp	
+182	Marsh	
+190	Impervious surfaces	
+200	Bare areas	
+210	Water body
+
+
+```{r}
+( fisl_export = fisl_landcover%>% select(ID, LandCover) )
+( lc_export = lc_landcover  %>% select(ID, LandCover) )
+( lcc_export = lcc_landcover %>% select(ID, LandCover) )
+( org_export = org_landcover %>% select(ID, LandCover) )
+
+```
+
+### Sub in new classes for odd ones
+
+```{r}
+org_fillin_slct = org_fillin %>% 
+  select(ID, Assign) %>%
+  rename(LandCover = Assign)
+```
+
+```{r}
+( org_export1 = org_export %>% 
+  filter(!ID %in% target_ID) %>%
+  bind_rows(org_fillin_slct) )
+```
+
+
+
+# Reclass
+
+```{r}
+
+
+reclass_landcover_fun <- function(df) {
+  df %>%
+    mutate(
+      landcover_name = case_when(
+        LandCover %in% 61:62   ~ "broadleaf",
+        LandCover %in% 71:72   ~ "needleleaf_evergreen",
+        LandCover %in% 81:82   ~ "needleleaf_deciduous",
+        LandCover %in% 91:92   ~ "mixedleaf",
+        LandCover %in% c(120,121,122, 152) ~ "shrub",
+        LandCover %in% c(130, 140, 150, 153) ~ "grass_lichen_moss",
+        is.na(LandCover)      ~ "missing",
+        TRUE                  ~ "missing"   # fallback
+      )
+    ) %>%
+    mutate(landcover_class = case_when(
+    landcover_name ==  "broadleaf"           ~ "1",
+    landcover_name == "needleleaf_evergreen" ~ "2",
+    landcover_name == "needleleaf_deciduous" ~ "3",
+    landcover_name == "mixedleaf"            ~ "4",
+    landcover_name == "shrub"                ~ "5",
+    landcover_name == "grass_lichen_moss"    ~ "6",
+    TRUE                                     ~ "NA"
+  ))  
+}
+
+```
+
+```{r}
+(lc_reclass = lc_export %>% reclass_landcover_fun() )
+(fisl_reclass = fisl_export %>% reclass_landcover_fun() )
+```
+```{r}
+(org_reclass = org_export1 %>% reclass_landcover_fun() )
+(lcc_reclass = lcc_export %>% reclass_landcover_fun() ) 
+```
+
+# Fill LCC_100 with "grass_lichen_moss" 
+
+```{r}
+lookup <- tibble(
+  ID = c("LCC_100"),
+  new_name = c("grass_lichen_moss"),
+  new_class = c("6")
+)
+
+( lcc_reclass <- lcc_reclass %>%
+  left_join(lookup, by = "ID") %>%
+  mutate(
+    landcover_name = coalesce(new_name, landcover_name),
+    landcover_class = coalesce(new_class, landcover_class)
+  ) %>%
+  select(-new_class, -new_name) )
+```
+
+```{r}
+( org_na = org_reclass %>% filter(landcover_class=="NA") )
+```
+
+```{r}
+write_csv(org_na, "../outputs/2025-09-22_ORG_LandCover_NA.csv")
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_na$ID))), collapse = ", "))
+```
+
+
+# Save
+
+```{r}
+
+write_csv(fisl_reclass, "../outputs/2025-08-18_cleaned/csv/2025-10-02_FISL_LandCover.csv")
+write_csv(lc_reclass, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_LandCover.csv")
+
+write_csv(org_reclass, "../outputs/2025-08-18_cleaned/csv/2025-09-23_ORG_LandCover.csv")
+write_csv(lcc_reclass, "../outputs/2025-08-18_cleaned/csv/2025-09-23_LCC_LandCover.csv")
+```
+
+
+```{r eval=FALSE, include=FALSE}
+
+df_mode <- df %>%
+  filter(lcYr >= fireYr - 5, lcYr <= fireYr - 1) %>%  # select years 1-5 before fire
+  group_by(fireYr) %>%
+  summarise(
+    Landcover_mode = get_mode(Landcover),
+    .groups = 'drop'
+  )
+
+df_mode
+```

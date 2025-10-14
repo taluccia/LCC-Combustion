@@ -1,0 +1,367 @@
+---
+title: "Model Dataframes"
+author: "Anna Talucci"
+date: "2025-08-31"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview
+
+Check missing data
+Figure for misssing data
+
+Combine LC, Fisl, and ORG data
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data 
+
+
+
+```{r}
+lc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-01_LC_Predictors.csv")
+fisl_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-01_FISL_Predictors.csv")
+lcc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-01_LCC_Predictors.csv")
+org_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-01_ORG_Predictors.csv")
+```
+
+
+
+```{r}
+lc_df
+fisl_df
+lc_df
+org_df
+```
+
+# Summarize Missing data
+
+```{r}
+lc_df %>% filter(if_any(everything(), is.na)) #159
+fisl_df %>% filter(if_any(everything(), is.na)) #32
+org_df %>% filter(if_any(everything(), is.na)) #611
+lcc_df %>% filter(if_any(everything(), is.na)) #82
+```
+
+```{r}
+lc_df %>% filter(if_any(everything(), is.na)) #159
+fisl_df %>% filter(if_any(everything(), is.na)) #32
+org_df %>% filter(if_any(everything(), is.na)) #611
+lcc_df %>% filter(if_any(everything(), is.na)) #82
+```
+```{r}
+lc_df %>% filter(fireYr < 2000)  #0
+fisl_df %>% filter(fireYr < 2000)  #0
+org_df %>% filter(fireYr < 2000)  #62
+lcc_df %>% filter(fireYr < 2000)  #59
+```
+
+```{r}
+lc_df %>% filter(is.na(DOB_lst))  #93
+fisl_df %>% filter(is.na(DOB_lst))  #25
+org_df %>% filter(is.na(DOB_lst))  #78
+lcc_df %>% filter(is.na(DOB_lst))  #40
+```
+
+```{r}
+lc_df %>% filter(fireYr > 2000) %>% filter(if_any(everything(), is.na)) #159
+fisl_df %>% filter(fireYr > 2000) %>% filter(if_any(everything(), is.na)) #32
+org_df %>% filter(fireYr > 2000) %>% filter(if_any(everything(), is.na)) #549
+lcc_df %>% filter(fireYr > 2000) %>% filter(if_any(everything(), is.na)) #78
+```
+
+### Sample for ABG
+
+```{r}
+lc_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-below.ground.carbon.combusted, -burn.depth) %>% 
+  filter(!if_any(everything(), is.na)) #396
+fisl_df %>% 
+  filter(fireYr > 2000) %>%  
+  select(-below.ground.carbon.combusted, -burn.depth)  %>% 
+  filter(!if_any(everything(), is.na)) #279
+org_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-below.ground.carbon.combusted, -burn.depth) %>% 
+  filter(!if_any(everything(), is.na)) #497
+
+```
+
+### Sample for BG
+
+```{r}
+lc_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-above.carbon.combusted, -burn.depth) %>% 
+  filter(!if_any(everything(), is.na)) #396
+fisl_df %>% 
+  filter(fireYr > 2000) %>%  
+  select(-above.carbon.combusted, -burn.depth)  %>% 
+  filter(!if_any(everything(), is.na)) #279
+org_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-above.carbon.combusted, -burn.depth) %>% 
+  filter(!if_any(everything(), is.na)) #656
+
+```
+
+### Sample for depth
+
+```{r}
+lc_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-above.carbon.combusted, -below.ground.carbon.combusted) %>% 
+  filter(!if_any(everything(), is.na)) #396
+fisl_df %>% 
+  filter(fireYr > 2000) %>%  
+  select(-above.carbon.combusted, -below.ground.carbon.combusted)  %>% 
+  filter(!if_any(everything(), is.na)) #279
+org_df %>% 
+  filter(fireYr > 2000) %>% 
+  select(-above.carbon.combusted, -below.ground.carbon.combusted) %>% 
+  filter(!if_any(everything(), is.na)) #666
+
+```
+
+```{r}
+lc_df %>% 
+  select(-Relative.humidity, -Temperature, -VPD, -Wind.speed) %>% 
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na)) #96
+
+
+fisl_df %>% 
+  select(-Relative.humidity, -Temperature, -VPD, -Wind.speed) %>%  
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na)) #32
+
+org_df %>% 
+  select(-Relative.humidity, -Temperature, -VPD, -Wind.speed) %>% 
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na)) #543
+
+lcc_df %>% 
+  select(-Relative.humidity, -Temperature, -VPD, -Wind.speed) %>% 
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na)) #46
+```
+
+```{r}
+lcc_df %>% 
+  select(-Relative.humidity, -Temperature, -VPD, -Wind.speed) %>% 
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na)) #46
+```
+
+## Summary histagram NA counts
+
+```{r}
+make_na_barplot <- function(df, title, filename) {
+  
+  p <- df %>%
+    summarise(across(everything(), ~ sum(is.na(.)))) %>%
+    pivot_longer(everything(), names_to = "Variable", values_to = "NA_Count") %>%
+    ggplot(aes(x = reorder(Variable, -NA_Count), y = NA_Count)) +
+    geom_col(fill = "red") +
+    theme_minimal() +
+    labs(title = title,
+         x = "Variable",
+         y = "NA Count") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  # ensure ../figures exists
+  if (!dir.exists("../figures")) {
+    dir.create("../figures", recursive = TRUE)
+  }
+  
+  # save with relative path
+  out_path <- file.path("../figures", filename)
+  ggsave(out_path, plot = p, width = 10, height = 6, dpi = 300, bg="white")
+  
+  return(p)
+}
+```
+
+```{r}
+make_na_barplot(lc_df,   "LC Field Data Count of Missing Values per Variable", "lc_missing_counts.png")
+make_na_barplot(fisl_df, "Fisl Field Data Count of Missing Values per Variable", "fisl_missing_counts.png")
+make_na_barplot(org_df,  "Combustion v1 Field Data Count of Missing Values per Variable", "org_missing_counts.png")
+make_na_barplot(lcc_df,  "LCC Field Data Count of Missing Values per Variable", "lcc_missing_counts.png")
+
+```
+
+
+## Heat map summary by observation
+
+```{r}
+make_missing_heatmap <- function(df, title, filename) {
+  
+  df_na <- df %>%
+    select(-date) %>%
+    mutate(row_id = row_number()) %>%
+    pivot_longer(
+      cols = -c(ID, project_name, lat, lon, fireYr, row_id),
+      names_to = "Variable",
+      values_to = "Value"
+    ) %>%
+    mutate(Missing = ifelse(is.na(Value), 1, 0))
+  
+  p <- ggplot(df_na, aes(x = Variable, y = row_id, fill = factor(Missing))) +
+    geom_tile(color = "white") +
+    scale_fill_manual(values = c("0" = "grey60", "1" = "red"),
+  labels = c("Present", "Missing"),
+  name = "Data") +
+    theme_minimal() +
+    labs(title = title,
+         x = "Variable",
+         y = "Observation") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  # Always save to ../figures/
+  out_path <- file.path("../figures", filename)
+  ggsave(out_path, plot = p, width = 10, height = 6, dpi = 300, bg="white")
+  
+  return(p)
+}
+```
+
+
+```{r}
+make_missing_heatmap(lc_df, "LC Missing Data Heatmap", "lc_missing_heatmap.png")
+make_missing_heatmap(fisl_df, "FISL Missing Data Heatmap", "fisl_missing_heatmap.png")
+make_missing_heatmap(org_df, "Combustion v1 Missing Data Heatmap", "org_missing_heatmap.png")
+make_missing_heatmap(lcc_df, "LCC Missing Data Heatmap", "lcc_missing_heatmap.png")
+```
+
+```{r}
+lc_df
+```
+```{r}
+library(heatmaply)
+heatmaply_na(
+  lc_df[5:62, ],
+  showticklabels = c(TRUE, FALSE)
+)
+```
+
+
+# Combine Training data 
+
+
+```{r}
+( training_df = bind_rows(lc_df, fisl_df, org_df) %>% 
+    select(-Relative.humidity, -Temperature, -VPD, -Wind.speed, -DD_0, -DD_18, -DD5) )
+```
+
+```{r}
+training_df %>% 
+  filter(fireYr > 2000) %>% 
+  filter(if_any(everything(), is.na))
+```
+
+```{r}
+training_df %>% 
+  filter(fireYr > 2000) %>% 
+  drop_na()
+```
+
+```{r}
+training_df %>% 
+  filter(above.carbon.combusted == 0) 
+```
+
+```{r}
+training_df %>% 
+  filter(is.na(above.carbon.combusted) )
+```
+
+```{r}
+training_df %>% 
+  filter(burn.depth == 0) 
+```
+
+# LCC is predict only
+
+```{r}
+( lcc_predictors = lcc_df %>% select(-Relative.humidity, -Temperature, -VPD, -Wind.speed, -DD_0, -DD_18, -DD5) )
+```
+
+```{r}
+lcc_predictors  %>% 
+  filter(fireYr > 2000) %>% 
+  filter(!if_any(everything(), is.na))
+```
+
+```{r}
+df_hist = training_df %>% select(fireYr:LandCover) %>% mutate(date = as.character(date))
+lcc_hist = lcc_predictors %>% select(fireYr:LandCover) %>% mutate(date = as.character(date))
+```
+
+```{r}
+plot_and_save_distributions <- function(df, outdir = "../figures/lcc_histograms") {
+  # create output folder if missing
+  if (!dir.exists(outdir)) dir.create(outdir)
+  
+  plots <- map(names(df), function(col) {
+    # check type
+    if (is.numeric(df[[col]])) {
+      p <- ggplot(df, aes(x = .data[[col]])) +
+        geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+        labs(title = paste("Histogram of", col), x = col, y = "Count") +
+        theme_minimal()
+    } else {
+      p <- ggplot(df, aes(x = .data[[col]])) +
+        geom_bar(fill = "tomato", color = "white") +
+        labs(title = paste("Bar plot of", col), x = col, y = "Count") +
+        theme_minimal()  +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    }
+    
+    # save each plot
+    ggsave(
+      filename = file.path(outdir, paste0(col, ".png")),
+      plot = p,
+      width = 6, height = 4, dpi = 300
+    )
+    
+    p
+  })
+  
+  names(plots) <- names(df)
+  return(plots)
+}
+
+```
+
+```{r}
+plots <- plot_and_save_distributions(df_hist)
+```
+
+```{r}
+plots <- plot_and_save_distributions(lcc_hist)
+```
+
+# Final Check 
+
+```{r}
+training_df
+lcc_predictors
+```
+
+# Save final dataframes
+
+```{r}
+write_csv(training_df, "../outputs/2025-09-01_modelPredictors/2025-09-01_ORG_LC_FISL_predictors.csv")
+write_csv(lcc_predictors, "../outputs/2025-09-01_modelPredictors/2025-09-01_LCC_predictors.csv")
+```

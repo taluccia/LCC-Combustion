@@ -1,0 +1,127 @@
+---
+title: "Organize FWI"
+author: "Anna Talucci"
+date: "2025-09-09"
+output: html_document
+---
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Organize FWI data by Project
+
+
+color help
+http://vrl.cs.brown.edu/color
+
+# Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+# Data
+
+## FWI
+```{r}
+lc_plot_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/2025-09-09_FWI/LC", pattern='*.csv', full.names = TRUE)
+
+```
+
+```{r}
+fisl_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/2025-10-02_fisl_fwi", pattern='*.csv', full.names = TRUE)
+#fisl_fwi_list
+```
+
+```{r}
+lc_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/2025-10-03_LC/fwi", pattern='*.csv', full.names = TRUE)
+#lc_fwi_list
+```
+
+```{r}
+lcc_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/2025-10-10_lcc_fwi", pattern='*.csv', full.names = TRUE)
+#lcc_fwi_list
+```
+
+```{r}
+org_fwi_list = list.files(path="../data/2025-08-08_combustion_layer_update/2025-09-09_FWI/ORG", pattern='*.csv', full.names = TRUE)
+#org_fwi_list
+```
+
+
+
+# Read and combine data frame list
+
+```{r}
+csv_rbind <- function(file_list) {
+  csv_data <- purrr::map_dfr(file_list, read_csv)
+  return(csv_data)
+}
+
+```
+
+```{r}
+read_csv(lcc_fwi_list[1])
+```
+```{r}
+df_list <- lapply(lcc_fwi_list, function(file) {
+  read.csv(file) |>
+    dplyr::mutate(site = as.character(site))
+})
+( lcc_fwi <- dplyr::bind_rows(df_list) )
+
+```
+
+```{r}
+(fisl_fwi = csv_rbind(fisl_fwi_list))
+(lc_fwi = csv_rbind(lc_fwi_list))
+
+(org_fwi = csv_rbind(org_fwi_list))
+
+```
+
+
+
+
+# select variables
+
+## Function
+
+```{r}
+clean_select_FWI <- function(df){df %>% 
+    rename(BUI = build_up_index, DC= drought_code, DMC = duff_moisture_code, DOB_lst = dob, FFMC = fine_fuel_moisture_code, FWI = fire_weather_index, ISI = initial_fire_spread_index, DSR = fire_daily_severity_rating) %>%
+  select(ID, date, DOB_lst, fireYr, BUI, DC, DMC, FFMC, FWI, ISI, DSR)
+}
+```
+
+```{r}
+(lc_plot_fwi_sub = clean_select_FWI(lc_plot_fwi))
+(fisl_fwi_sub = clean_select_FWI(fisl_fwi))
+(lc_fwi_sub = clean_select_FWI(lc_fwi))
+(lcc_fwi_sub = clean_select_FWI(lcc_fwi))
+(org_fwi_sub = clean_select_FWI(org_fwi))
+```
+
+
+
+
+
+
+# Save
+
+```{r}
+write_csv(fisl_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-02_Fisl_site_fwi.csv")
+write_csv(lc_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_site_fwi.csv")
+
+write_csv(org_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-09-09_ORG_fwi.csv")
+
+
+write_csv(lcc_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-10_LCC_fwi.csv")
+```
+
+

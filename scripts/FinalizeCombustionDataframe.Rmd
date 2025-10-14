@@ -1,0 +1,232 @@
+---
+title: "Final Predictor Dataframe"
+author: "Anna Talucci"
+date: "2025-09-23"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview
+Finalize dataframe of predictors
+
+
+Check missing data
+Figure for missing data
+
+Combine LC, Fisl, and ORG data
+
+# Packages 
+
+```{r}
+library(tidyverse)
+
+```
+
+# Data 
+
+```{r}
+lc_sites = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_site_Predictors.csv")
+fisl_sites = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_Site_Predictors.csv")
+lcc = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+org = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_ORG_Predictors.csv")
+```
+
+## Field Plot ID
+
+```{r}
+lc_id = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+fisl_id = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
+
+
+# View 
+
+```{r}
+fisl_sites
+lc_sites
+lcc
+org
+```
+
+```{r}
+lc_id
+fisl_id
+```
+
+```{r eval=FALSE, include=FALSE}
+fisl_siteplot = fisl_id %>% select(ID:plot) %>% right_join(fisl_site, by="ID")
+lc_siteplot = lc_id %>% select(ID:unique_site_id) %>% right_join(lc_site, by="ID")
+```
+
+
+
+
+
+# Clean NA
+
+```{r}
+clean_na <- function(df) {
+  df %>% 
+    select(-LandCover, landcover_name) %>%
+    mutate(across(everything(), ~ {
+      x <- .
+      if (is.character(x) | is.factor(x)) {
+        x <- trimws(as.character(x))        # remove extra spaces
+        x[x %in% c("", "NA", "NaN")] <- NA  # replace with real NA
+      } else if (is.numeric(x)) {
+        x[is.nan(x) | is.infinite(x)] <- NA # fix NaN, Inf
+      }
+      x
+    }))
+}  
+
+```
+
+```{r}
+( fisl_clean = fisl_sites %>% clean_na() )
+( lc_clean = lc_sites %>% clean_na() )
+( lcc_clean = lcc %>% clean_na() %>% 
+  filter(fireYr != "unknown") %>% # remove fire year unknown
+  filter(fireYr >2000) %>% # remove fire older than 2000
+  filter(ID != "LCC_47" | ID !="LCC_48")  )
+
+( org_clean = org %>% clean_na() %>% rename(combusted_above = above.carbon.combusted, burn_depth = burn.depth, combusted_below = below.ground.carbon.combusted) %>% # remove fire year unknown
+  filter(fireYr >2000))
+```
+
+
+### Sample Sizes with Missing removed
+
+```{r}
+cols <- paste(names(org), collapse = ", ")
+cols
+```
+
+```{r}
+sampleSizeNaRemoved_abg <- function(df){df  %>%
+    select(-combusted_below, -burn_depth) %>%
+  summarise(
+    Sample_AboveGround = sum(complete.cases(.)),
+    NA_AboveGround = n() - sum(complete.cases(.))
+  )
+}
+
+
+sampleSizeNaRemoved_bg <- function(df){df  %>%
+    select(-combusted_above, -burn_depth) %>%
+  summarise(
+    Sample_BelowGround = sum(complete.cases(.)),
+    NA_BelowGround = n() - sum(complete.cases(.))
+  )
+}
+
+sampleSizeNaRemoved_bd <- function(df){df  %>%
+    select(-combusted_above, -combusted_below) %>%
+  summarise(
+    Sample_BurnDepth = sum(complete.cases(.)),
+    NA_BurnDepth = n() - sum(complete.cases(.))
+  )
+}
+```
+
+```{r}
+orgabg = org_clean %>% sampleSizeNaRemoved_abg() %>% mutate(project = "ORG")
+lcabg = lc_clean %>% sampleSizeNaRemoved_abg() %>% mutate(project = "LC")
+fislabg = fisl_clean %>% sampleSizeNaRemoved_abg() %>% mutate(project = "FISL")
+```
+
+```{r}
+orgbg = org_clean %>% sampleSizeNaRemoved_bg() %>% mutate(project = "ORG")
+lcbg = lc_clean %>% sampleSizeNaRemoved_bg() %>% mutate(project = "LC")
+fislbg = fisl_clean %>% sampleSizeNaRemoved_bg() %>% mutate(project = "FISL")
+```
+
+```{r}
+orgbd = org_clean %>% sampleSizeNaRemoved_bd() %>% mutate(project = "ORG")
+lcbd = lc_clean %>% sampleSizeNaRemoved_bd() %>% mutate(project = "LC")
+fislbd = fisl_clean %>% sampleSizeNaRemoved_bd() %>% mutate(project = "FISL")
+```
+
+```{r}
+org_sample = orgabg %>% full_join(orgbg, by = "project") %>% full_join(orgbd, by = "project") %>% relocate(project)
+
+lc_sample = lcabg %>% full_join(lcbg, by = "project") %>% full_join(lcbd, by = "project") %>% relocate(project)
+
+fisl_sample = fislabg %>% full_join(fislbg, by = "project") %>% full_join(fislbd, by = "project") %>% relocate(project)
+
+(sample_df = bind_rows(fisl_sample, lc_sample, org_sample))
+```
+
+```{r}
+write_csv(sample_df, "../outputs/2025-10-03_CombustionModelSampleSizeSummary.csv")
+
+```
+
+# One more look
+
+```{r}
+fisl_clean
+lc_clean
+lcc_clean
+org_clean
+```
+
+```{r}
+org_clean %>% filter(is.na(landcover_name))
+```
+
+# Save Final Data frames
+
+```{r}
+write_csv(lc_clean,"../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_CombustionModelPredictors.csv")
+write_csv(fisl_clean, "../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_CombustionModelPredictors.csv")
+write_csv(lcc_clean, "../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_CombustionModelPredictors.csv")
+write_csv(org_clean, "../outputs/2025-08-31_Cleaned_DF/2025-10-03_ORG_CombustionModelPredictors.csv")
+```
+
+
+# Combine Predictors into one dataframe
+
+```{r}
+fisl_clean
+lc_clean
+org_clean
+```
+
+```{r}
+names(fisl_clean)
+names(lc_clean)
+names(org_clean)
+```
+
+```{r}
+( fisl_same = fisl_clean %>% select(ID, lat, lon, fireYr:landcover_class) )
+( lc_same = lc_clean %>% select(ID, lat, lon, fireYr:landcover_class) )
+( org_same = org_clean %>% rename(project = project_name) %>% drop_na(DOB_lst))
+```
+
+```{r}
+( combined_predictors = bind_rows(fisl_same, lc_same, org_same) )
+```
+
+```{r}
+( combined_predictors1 = combined_predictors %>% filter(tree_cover!=200) %>% filter(landcover_class!="missing")
+)
+```
+
+## Save
+
+```{r}
+write_csv(combined_predictors1,"../outputs/2025-08-31_Cleaned_DF/2025-10-14_CombustionModelPredictors.csv")
+```
+
+# Missing
+
+```{r}
+combined_predictors1 %>% filter(is.na(landcover_class))
+```

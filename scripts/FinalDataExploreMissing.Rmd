@@ -1,0 +1,559 @@
+---
+title: "Missing data Explore"
+author: "Anna Talucci"
+date: "2025-09-04"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview
+
+Check missing data
+Figure for missing data
+
+Combine LC, Fisl, and ORG data
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data 
+
+```{r}
+lc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_site_Predictors.csv")
+fisl_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_Site_Predictors.csv")
+```
+
+```{r}
+
+lcc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+org_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_ORG_Predictors.csv")
+```
+
+```{r}
+lc_id = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+fisl_id = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
+```{r}
+lcc_id = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
+```
+
+
+# View 
+
+```{r}
+lc_df
+fisl_df
+lcc_df
+org_df
+```
+```{r}
+sort(unique(fisl_df$fireYr))
+
+sort(unique(lc_df$fireYr))
+sort(unique(lcc_df$fireYr))
+sort(unique(org_df$fireYr))
+```
+
+```{r}
+lc_id
+fisl_id
+lcc_id
+
+```
+
+# Join field data info
+
+```{r}
+lc_field = lc_id %>% select(ID, fire, site, plot, unique_site_id, pre_fire_vegetation)
+fisl_field = fisl_id %>% select(ID, fire_name, site, plot, dcm, abmc)
+lcc_field = lcc_id %>% select(ID, researcher, study_area, eco_type)
+
+```
+
+```{r}
+( lc = lc_field %>% left_join(lc_df, by="ID") )
+( lc_fullField = lc_id %>% left_join(lc_df, by="ID") )
+( fisl = fisl_field %>% left_join(fisl_df, by="ID") )
+( lcc = lcc_field %>% left_join(lcc_df, by="ID") )
+( lcc_fullField = lcc_id %>% left_join(lcc_df, by="ID") )
+```
+
+# LCC Remove pre 2000 data
+
+```{r}
+(lcc = lcc %>% 
+  filter(fireYr != "unknown") %>% # remove fire year unknown
+  filter(fireYr >2000) %>% # remove fire older than 2000
+  filter(ID != "LCC_47" | ID !="LCC_48") %>% # Remove Hayes sites for 2006 that should be FireYr 1996
+  mutate(fireYr = as.numeric(fireYr)) )
+
+(lcc_fullField = lcc_fullField %>% 
+  filter(fireYr != "unknown") %>% # remove fire year unknown
+  filter(fireYr >2000) %>% # remove fire older than 2000
+  filter(ID != "LCC_47" | ID !="LCC_48") %>% # Remove Hayes sites for 2006 that should be FireYr 1996
+  mutate(fireYr = as.numeric(fireYr)) )
+```
+
+```{r}
+org_df = org_df %>% filter(fireYr > 2000) %>% rename(combusted_above = above.carbon.combusted, burn_depth = burn.depth, combusted_below = below.ground.carbon.combusted, project=project_name)
+
+```
+
+# Summarize Missing data
+
+## Over all summary
+summarise(
+    non_missing_rows = sum(apply(., 1, function(row) 
+      all(!is.na(row) & row != "" & row != "NA")
+    ))
+  )
+  
+```{r}
+clean_na <- function(df) {
+  df %>%
+    mutate(across(everything(), ~ {
+      x <- .
+      if (is.character(x) | is.factor(x)) {
+        x <- trimws(as.character(x))        # remove extra spaces
+        x[x %in% c("", "NA", "NaN")] <- NA  # replace with real NA
+      } else if (is.numeric(x)) {
+        x[is.nan(x) | is.infinite(x)] <- NA # fix NaN, Inf
+      }
+      x
+    }))
+}  
+
+```
+
+```{r}
+missing_data_fun <- function(df){df  %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "na_count") %>%
+  arrange(desc(na_count))
+}
+```
+
+```{r}
+fisl_df
+lc_df
+org_df
+```
+
+```{r}
+( fisl_na = fisl_df %>% select(ID, lat:landcover_class) %>% clean_na() %>% missing_data_fun() %>% rename(fisl_na = na_count) )
+( lc_na = lc_df %>% select(ID, lat:landcover_class)  %>% clean_na() %>% missing_data_fun() %>% rename(lc_na = na_count) )
+
+( org_na = org_df %>% clean_na() %>% missing_data_fun() %>% rename(org_na = na_count) )
+```
+```{r}
+( lcc_na = lcc %>% clean_na() %>% missing_data_fun() %>% rename(lcc_na = na_count))
+```
+
+```{r}
+( na_df = fisl_na %>%
+    left_join(lc_na,  by = "variable") %>%
+    #left_join(lcc_na,  by = "variable") %>% 
+    left_join(org_na, by = "variable") 
+)
+```
+
+```{r}
+write_csv(na_df, "../outputs/2025-10-06_MissingDataSummaryForFinalDataset.csv")
+
+```
+
+
+
+# Site Info for missing
+
+## DoB
+
+### LC DoB
+
+```{r}
+( lc_dob_na = lc_fullField %>% filter(is.na(DOB_lst)) )
+```
+```{r}
+write_csv(lc_dob_na, "../outputs/2025-09-17_MissingDoB_LC.csv")
+
+```
+```{r}
+( cm_sites = lc %>% filter(fire=="ChitananaMooseheart") )
+```
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(cm_sites$ID))), collapse = ", "))
+```
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc_dob_na$ID))), collapse = ", "))
+```
+
+#### LCC
+
+```{r}
+( lcc_dob_na = lcc_fullField %>% filter(is.na(DOB_lst)) %>% filter(fireYr > as.numeric(2000)) %>% filter(fireYr != "unknown")) %>% filter(researcher != "Hayes")
+```
+
+```{r}
+write_csv(lcc_dob_na, "../outputs/2025-09-17_MissingDoB_LCC.csv")
+
+```
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_dob_na$ID))), collapse = ", "))
+```
+
+##### Indivdual Researchers for DOB NA sites
+
+```{r}
+(baltzer = lcc %>% filter(researcher=="Baltzer") )
+(pare = lcc %>% filter(researcher=="Pare") )
+(gundale = lcc %>% filter(researcher=="Gundale/Nilsson") )
+(metcalfe = lcc %>% filter(researcher=="Metcalfe") )
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(baltzer$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(pare$ID))), collapse = ", "))
+```
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(gundale$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(metcalfe$ID))), collapse = ", "))
+```
+
+## Landsat indices 
+
+### LCC
+dNDII, dNDVI, rbr, rdnbr, brightness, greenness, wetness
+
+```{r}
+( lcc_burnindex_na = lcc %>%
+    filter(if_any(c(dNDII, dNDVI, rbr, rdnbr), is.na)) )
+```
+
+```{r}
+( lcc_TCindex_na = lcc %>%
+    filter(if_any(c(brightness, greenness, wetness), is.na)) )
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_index_na$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_index_na$fireYr))), collapse = ", "))
+```
+
+```{r}
+lcc_df %>% filter(fireYr < as.numeric(2000) | fireYr == "unknown") 
+```
+
+### Fisl
+
+```{r}
+( fisl_burnindex_na = fisl %>%
+    filter(if_any(c(dNDII, dNDVI, rbr, rdnbr), is.na)) )
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(fisl_burnindex_na$ID))), collapse = ", "))
+```
+### ORG
+
+```{r}
+( org_burnindex_na = org_df %>%
+    filter(if_any(c(dNDII, dNDVI, rbr, rdnbr), is.na)) )
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_burnindex_na$ID))), collapse = ", "))
+```
+
+## Land cover
+
+```{r}
+
+( lcc_LandCover_na =  lcc %>% filter(is.na(landcover_class)) ) 
+
+```
+
+```{r}
+
+( org_LandCover_na =  org_df %>% filter(is.na(landcover_class)) ) 
+( org_landcover_view = org_df %>% filter(ID %in% c("NWT_BCKE_659", "NWT_BCKE_660", "NWT_BCKE_661", "NWT_BCKE_662", "NWT_BCKE_663", "NWT_MackWalker_720", "NWT_BCKE_443", "AK_KT_135", "AK_KT_132", "AK_KT_22", "AK_KT_7", "CAN_deGroot_220", "CAN_deGroot_209", "NWT_BCKE_483", "NWT_BCKE_712", "NWT_MackWalker_718"))) %>% drop_na(above.carbon.combusted) %>% drop_na(below.ground.carbon.combusted)
+```
+
+"NWT_BCKE_483", "NWT_BCKE_659"
+## Tree cover
+
+```{r}
+
+( lcc_teeCover_na =  lcc_df %>% filter(is.na(tree_canopy_cover)) %>% filter(fireYr >2000) %>% filter(fireYr != "unknown") ) 
+
+```
+
+
+## Soil 
+
+```{r}
+( lcc_soil_na = lcc %>% filter(is.na(BD_30)) ) 
+( org_soil_na = org_df %>% filter(is.na(BD_30))  )
+```
+
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_soil_na$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_soil_na$ID))), collapse = ", "))
+```
+
+
+
+## twi 
+
+```{r}
+
+( lcc_twi_na = lcc_df %>% filter(is.na(twi)) ) 
+( org_twi_na = org_df %>% filter(is.na(twi))  )
+
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_twi_na$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_twi_na$ID))), collapse = ", "))
+```
+
+## Summary histagram NA counts
+
+```{r}
+make_na_barplot <- function(df, title, filename) {
+  
+  p <- df %>%
+    summarise(across(everything(), ~ sum(is.na(.)))) %>%
+    pivot_longer(everything(), names_to = "Variable", values_to = "NA_Count") %>%
+    ggplot(aes(x = reorder(Variable, -NA_Count), y = NA_Count)) +
+    geom_col(fill = "red") +
+    theme_minimal() +
+    labs(title = title,
+         x = "Variable",
+         y = "NA Count") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  # ensure ../figures exists
+  if (!dir.exists("../figures")) {
+    dir.create("../figures", recursive = TRUE)
+  }
+  
+  # save with relative path
+  out_path <- file.path("../figures", filename)
+  ggsave(out_path, plot = p, width = 10, height = 6, dpi = 300, bg="white")
+  
+  return(p)
+}
+```
+
+```{r}
+make_na_barplot(lc_df,   "LC Field Data Count of Missing Values per Variable", "2025-09-17_lc_missing_counts.png")
+make_na_barplot(fisl_df, "Fisl Field Data Count of Missing Values per Variable", "2025-09-17_fisl_missing_counts.png")
+make_na_barplot(org_df,  "Combustion v1 Field Data Count of Missing Values per Variable", "2025-09-17_org_missing_counts.png")
+make_na_barplot(lcc_df,  "LCC Field Data Count of Missing Values per Variable", "2025-09-17_lcc_missing_counts.png")
+
+```
+
+## Heat map summary by observation
+
+```{r}
+make_missing_heatmap <- function(df, title, filename) {
+  
+  df_na <- df %>%
+    select(-date) %>%
+    mutate(row_id = row_number()) %>%
+    pivot_longer(
+      cols = -c(ID, project_name, lat, lon, fireYr, row_id),
+      names_to = "Variable",
+      values_to = "Value"
+    ) %>%
+    mutate(Missing = ifelse(is.na(Value), 1, 0))
+  
+  p <- ggplot(df_na, aes(x = Variable, y = row_id, fill = factor(Missing))) +
+    geom_tile(color = "white") +
+    scale_fill_manual(values = c("0" = "grey60", "1" = "red"),
+  labels = c("Present", "Missing"),
+  name = "Data") +
+    theme_minimal() +
+    labs(title = title,
+         x = "Variable",
+         y = "Observation") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  # Always save to ../figures/
+  out_path <- file.path("../figures", filename)
+  ggsave(out_path, plot = p, width = 10, height = 6, dpi = 300, bg="white")
+  
+  return(p)
+}
+```
+
+
+```{r}
+make_missing_heatmap(lc_df, "LC Missing Data Heatmap", "lc_missing_heatmap.png")
+make_missing_heatmap(fisl_df, "FISL Missing Data Heatmap", "fisl_missing_heatmap.png")
+make_missing_heatmap(org_df, "Combustion v1 Missing Data Heatmap", "org_missing_heatmap.png")
+make_missing_heatmap(lcc_df, "LCC Missing Data Heatmap", "lcc_missing_heatmap.png")
+```
+
+```{r}
+lc_df
+```
+
+# Detailed exploration of missing data
+
+## Fire weather and Day of burn
+
+### LC
+
+```{r}
+( lc_fwi_missing = lc_df %>% filter(is.na(FWI) | is.na(DOB_lst)) )
+```
+```{r}
+unique(lc_fwi_missing$fireYr)
+```
+
+```{r}
+lc_fwi_missing_2018 = lc_fwi_missing %>% filter(fireYr==2018)
+lc_fwi_missing_2022 = lc_fwi_missing %>% filter(fireYr==2022)
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc_fwi_missing_2018$ID))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc_fwi_missing_2022$ID))), collapse = ", "))
+```
+
+### Fisl
+
+```{r}
+( fisl_fwi_missing = fisl_df %>% filter(is.na(FWI) | is.na(DOB_lst)) )
+```
+```{r}
+sort(unique(fisl_fwi_missing$fireYr))
+```
+
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(fisl_fwi_missing$ID))), collapse = ", "))
+```
+
+### LCC
+
+```{r}
+( lcc_fwi_missing = lcc %>% filter(is.na(FWI) | is.na(DOB_lst)) )
+```
+```{r}
+sort(unique(lcc_fwi_missing$fireYr))
+```
+
+```{r}
+lcc_fwi_missing %>% arrange(fireYr)
+```
+
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_fwi_missing$ID))), collapse = ", "))
+```
+
+### ORG
+
+```{r}
+( org_fwi_missing = org_df %>% filter(is.na(FWI) | is.na(DOB_lst)) %>% filter(fireYr >2000))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_fwi_missing$ID))), collapse = ", "))
+```
+
+## Land cover
+
+```{r}
+lc %>% filter(LandCover > 180)
+fisl %>% filter(LandCover > 180) 
+lcc %>% filter(LandCover > 180)
+```
+
+```{r}
+lc %>% filter(fire =="ChitananaMooseheart")
+```
+
+```{r}
+lcc %>% filter(study_area == "AK tundra")
+```
+## Tree Cover
+
+```{r}
+lc %>% filter(is.na(tree_canopy_cover))
+
+fisl %>% filter(is.na(tree_canopy_cover))
+lcc %>% filter(is.na(tree_canopy_cover))
+```
+
+```{r}
+lcc %>% filter(researcher == "Lucas Brehaut")
+```
+
+```{r}
+lc %>% filter(fire == "Douglas")
+```
+
+
+
+## Soil
+
+```{r}
+lc %>% filter(is.na(BD_30))
+fisl %>% filter(is.na(BD_30)) 
+lcc %>% filter(is.na(BD_30))
+```
+
+```{r}
+lcc %>% filter(researcher %in% c("Dominique Arseneault", "Diaz-Veraverbeke", "Hung and Natali", "Parisien"))
+```
+
+
+
+# Fill in NA
+
+## LC
+
+```{r}
+lc$tree_canopy_cover[is.na(lc$tree_canopy_cover) & lc$ID == "LC_124"] <- 17 #pulled form 2010 no 2015 image
+lc$tree_canopy_cover[is.na(lc$tree_canopy_cover) & lc$ID == "LC_125"] <- 17 #pulled form 2010 no 2015 image
+lc$tree_canopy_cover[is.na(lc$tree_canopy_cover) & lc$ID == "LC_126"] <- 17 #pulled form 2010 no 2015 image
+```
+
+## LCC
+
+```{r}
+lcc$tree_canopy_cover[is.na(lcc$tree_canopy_cover) & lcc$ID == "LCC_100"] <- 0 # tundra site
+```

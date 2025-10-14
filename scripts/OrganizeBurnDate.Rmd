@@ -1,0 +1,217 @@
+---
+title: "Organize Burn Date"
+author: "Anna Talucci"
+date: "2025-08-31"
+output: html_document
+---
+
+
+# Over view 
+
+# Packages
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data
+
+
+## Full DF points
+
+```{r}
+org_full = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-30_org_full_pts_WGS84.shp")
+
+lcc_site = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-10-09_lcc_full_pts_WGS84.shp")
+```
+
+```{r}
+lc_site = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-09-30_lc_site_pts_WGS84.shp")
+fisl_site = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-09-30_fisl_site_pts_WGS84.shp") 
+```
+## Sweden DOB
+
+```{r}
+lcc_sweden_dob = read_csv("../data/lcc_sweden_dob/eckdahl_LLC.csv")
+```
+
+## DOB
+
+### V2 
+
+```{r}
+lc_site_dob = read_csv("../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-03_LC_Sites_DoB.csv")
+fisl_site_dob = read_csv("../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-02_FISL_Sites_DoB.csv")
+```
+
+```{r}
+lcc_site_dob = read_csv("../outputs/2025-10-02_DoB_LC_FISL_Sites/2025-10-10_LCC_Sites_DoB.csv")
+org_missing_dob_p = read_csv("../outputs/2025-09-08_MissingDobFilled/2025-09-08_ORG_DobPotter.csv")
+```
+
+```{r}
+org_missing_dob_p
+```
+# Compare original data
+
+## ORG v1
+
+```{r}
+org_dob = read_csv("../outputs/LCC_cleaned/csv/2025-08-31_ORG_DoB.csv")
+```
+
+```{r}
+org_dob
+```
+
+## Compare V1 to V2
+
+```{r}
+v1 = org_dob %>% select(ID, DOB_lst) %>% mutate(DOB_lst = as.integer(DOB_lst))
+v2 = org_missing_dob_p %>% select(ID, BurnDate) 
+(join = v1 %>% left_join(v2, by = "ID") %>% mutate(diff = DOB_lst - BurnDate) )
+```
+
+
+## Add Date 
+
+```{r}
+( org_dob_pts = org_dob %>% 
+  mutate(BurnDate = as.integer(DOB_lst)) %>%
+  mutate(date= as.Date(BurnDate-1, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date) %>%
+  right_join(org_full, by = "ID") %>%
+    mutate(date = as.character(date))
+)
+```
+
+## V2
+
+```{r}
+( org_pts = org_missing_dob_p %>% 
+  mutate(date= as.Date(BurnDate, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date) %>%
+  right_join(org_full, by = "ID") %>%
+    mutate(date = as.character(date))
+)
+```
+# FISL, and LCC
+
+
+
+```{r}
+( lc_pts = lc_site_dob %>% 
+  mutate(date= as.Date(BurnDate, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date) %>%
+  right_join(lc_site, by = "ID") %>%
+    mutate(date = as.character(date))
+)
+```
+
+```{r}
+( fisl_pts = fisl_site_dob %>% 
+  mutate(date= as.Date(BurnDate, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date) %>%
+  right_join(fisl_site, by = "ID") %>%
+    mutate(date = as.character(date))
+)
+```
+
+# LCC
+
+```{r}
+lcc_site_dob
+```
+
+```{r}
+( lcc_pts = lcc_site_dob %>% 
+  mutate(date= as.Date(BurnDate, origin=paste0(fireYr, "-01-01")), 
+              month= strftime(date, "%m"), 
+              day=strftime(date,"%d"))  %>%
+  rename(dob=BurnDate) %>%
+  relocate(ID, date) %>%
+  dplyr::select(ID, dob, date) %>%
+  right_join(lcc_full, by = "ID") %>%
+    mutate(date = as.character(date))
+)
+```
+
+# Missing LCC Sweden fix
+
+```{r}
+( sweden_fill = lcc_sweden_dob %>% 
+    filter(plot_id %in% c(21, 37, 45)) %>%
+  mutate(
+    ID = case_when(
+      plot_id == 21 ~ "LCC_55",
+      plot_id == 37 ~ "LCC_63",
+      plot_id == 45 ~ "LCC_22",
+      TRUE ~ "F"   # default if none of the above match
+    )
+  ) %>%
+    relocate(ID) %>%
+    dplyr::select(-plot_id, -longitude, -latitude) %>%
+    rename(date = burn_date) %>%
+    mutate(date = as.character(date))
+)
+```
+
+```{r}
+( lcc_df_filled <- lcc_pts %>%
+  left_join(sweden_fill, by = "ID", suffix = c("_old", "_new")) %>%
+  mutate(
+    date = if_else(is.na(date_old), date_new, date_old)
+  ) %>%
+  select(-ends_with("_old"), -ends_with("_new")) %>%
+    relocate(ID, dob, date)
+)
+
+```
+
+# Print calendar dates for EE
+
+Get calendar date with quotes and separated by comma to add to GEE code. Copy printed list into EE code `BurnDateFWIExtract`
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(org_pts$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lcc_df_filled$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(lc_pts$date))), collapse = ", "))
+```
+
+```{r}
+cat(paste0(sprintf("'%s'", sort(unique(fisl_pts$date))), collapse = ", "))
+```
+  
+```{r eval=FALSE, include=FALSE}
+st_write(fisl_pts, "../outputs/LCC_cleaned/points/shapefiles/2025-10-02_FISL_sites_dob.shp", driver="ESRI Shapefile")
+st_write(lc_pts, "../outputs/LCC_cleaned/points/shapefiles/2025-10-03_LC_sites_dob.shp", driver="ESRI Shapefile")
+
+
+st_write(org_pts, "../outputs/LCC_cleaned/points/shapefiles/2025-09-08_ORG_pts_dob.shp", driver="ESRI Shapefile")
+
+st_write(lcc_df_filled, "../outputs/LCC_cleaned/points/shapefiles/2025-10-10_LCC_pts_dob.shp", driver="ESRI Shapefile")
+
+```

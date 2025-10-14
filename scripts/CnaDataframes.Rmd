@@ -1,0 +1,82 @@
+---
+title: "CNA Dataframes"
+author: "Anna Talucci"
+date: "2025-10-02"
+output: html_document
+---
+
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Use cleaned qaqc data from `ExploreData.Rmd` in Repo LCC-SpatialData to generate unique row ids and subset data for field data with measured combustion values for training the combustion model. Update 8-21-25
+
+
+# Packages
+
+```{r}
+library(tidyverse)  # Data manipulation & visualization
+library(sf)
+library(mapview)
+```
+
+
+
+# Data
+
+```{r}
+lc_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+fisl_site = read_csv("../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
+```
+
+```{r}
+lc_site
+fisl_site
+```
+
+# Subset and rename columns needed
+
+
+
+```{r}
+( climateNA_lc = lc_site %>% 
+    select(site_ID, fireYr, lat, lon) %>%
+  rename(id1 = site_ID, id2 = fireYr, long = lon) %>%
+  relocate(id1, id2) %>%
+    mutate(elev = "")
+)
+
+```
+
+```{r}
+( climateNA_lcc = lcc_subset %>% 
+  rename(id1 = ID, id2 = fireYr, long = lon) %>%
+  relocate(id1, id2) 
+)
+
+```
+
+```{r}
+( climateNA_fisl = fisl_site %>% 
+   select(site_ID, fireYr, lat, lon) %>%
+  rename(id1 = site_ID, id2 = fireYr, long = lon) %>%
+  relocate(id1, id2) %>%
+    mutate(elev = "")
+)
+
+```
+
+```{r}
+write_csv(climateNA_lc, "../outputs/LCC_cleaned/csv/2025-10-02_climateNA_LC_site.csv")
+
+write_csv(climateNA_fisl, "../outputs/LCC_cleaned/csv/2025-10-02_climateNA_FISL_site.csv")
+```
+
+```{r}
+write_csv(climateNA_lcc, "../outputs/LCC_cleaned/csv/2025-06-02_climateNA_LCC.csv")
+```
+
+

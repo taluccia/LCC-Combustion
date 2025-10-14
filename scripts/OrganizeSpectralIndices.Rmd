@@ -1,0 +1,97 @@
+---
+title: "Organize Spectral Indices"
+author: "Anna Talucci"
+date: "2025-08-29"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+# Overview
+
+Organize spectral index data for each project DF.
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+
+# Data
+
+```{r}
+fisl_tct = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/FISL_landsatTCT_allYears.csv")
+lc_tct = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/LC_landsatTCT_allYears.csv")
+lcc_tct = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-17_TCT/LCC_landsatTCT_allYears.csv")
+org_tct = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-17_TCT/ORG_landsatTCT_allYears.csv")
+```
+
+```{r}
+fisl_burn = read_csv("../data/2025-08-08_combustion_layer_update/2025-09-30_LC_FISL_Site_Data/FISL_burnIndices_allYears.csv")
+lc_burn = read_csv("../data/2025-08-08_combustion_layer_update/2025-10-03_LC/LC_burnIndices_allYears.csv")
+lcc_burn = read_csv("../data/2025-08-08_combustion_layer_update/indices/LCC_burnIndices_allYears.csv")
+org_burn = read_csv("../data/2025-08-08_combustion_layer_update/indices/ORG_burnIndices_allYears.csv")
+```
+
+
+
+```{r}
+fisl_tct
+lc_tct
+lcc_tct
+org_tct
+```
+```{r}
+fisl_burn
+lc_burn
+lcc_burn
+org_burn
+```
+
+
+
+
+
+```{r}
+fisl_tct_s = fisl_tct %>% select(ID, brightness, greenness, wetness)
+lc_tct_s = lc_tct %>% select(ID, brightness, greenness, wetness)
+lcc_tct_s = lcc_tct %>% select(ID, brightness, greenness, wetness)
+org_tct_s = org_tct %>% select(ID, brightness, greenness, wetness)
+```
+
+```{r}
+( fisl_index = fisl_burn %>% 
+  select(ID, dNBR, dNDII, dNDVI, rbr, rdnbr) %>% 
+  full_join(fisl_tct_s, by = "ID") )
+
+( lc_index = lc_burn %>% 
+  select(ID, dNBR, dNDII, dNDVI, rbr, rdnbr) %>%
+  full_join(lc_tct_s, by = "ID")  )
+
+( lcc_index = lcc_burn %>% 
+  select(ID, dNBR, dNDII, dNDVI, rbr, rdnbr) %>%
+  full_join(lcc_tct_s, by = "ID") )
+
+```
+
+```{r}
+
+
+(org_index = org_burn %>% 
+  select(ID, dNBR, dNDII, dNDVI, rbr, rdnbr) %>%
+  full_join(org_tct_s, by = "ID") )
+```
+
+
+```{r}
+write_csv(lc_index, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_Indices.csv")
+write_csv(fisl_index, "../outputs/2025-08-18_cleaned/csv/2025-10-02_FISL_Indices.csv")
+
+write_csv(lcc_index, "../outputs/2025-08-18_cleaned/csv/2025-09-18_LCC_Indices.csv")
+
+write_csv(org_index, "../outputs/2025-08-18_cleaned/csv/2025-09-18_ORG_Indices.csv")
+```

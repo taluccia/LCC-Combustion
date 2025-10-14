@@ -1,0 +1,82 @@
+---
+title: "Explor Missing For Potter Original Dataframe"
+author: "Anna Talucci"
+date: "2025-09-22"
+output: html_document
+---
+
+```{r clear environment, include=FALSE}
+rm(list=ls())
+```
+
+
+# Overview
+
+Check missing data
+Figure for missing data
+
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+# Data 
+
+```{r}
+org_potter_v1 = read_csv("../data/combustion_predictors/all_predictors.csv")
+org_depth = read_csv("../data/field/Combustion_SynthesisData_05042018_XJW.csv")
+```
+
+# View 
+
+```{r}
+org_potter_v1
+org_depth
+```
+
+```{r}
+sort(unique(org_potter_v1$burn_year))
+```
+
+
+# Select id and burn depth and join to other dataframe
+
+```{r}
+org_df = org_depth %>% 
+  select(id, burn.depth) %>%
+  left_join(org_potter_v1, by = "id")
+```
+
+
+# Remove pre 2000 data
+
+```{r}
+org_df1 = org_df %>% filter(burn_year > 2000)
+
+```
+
+# Summarize Missing data
+
+## Over all summary
+
+```{r}
+missing_data_fun <- function(df){df  %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "na_count") %>%
+  arrange(desc(na_count))
+}
+```
+
+```{r}
+( org_na = org_df1 %>% missing_data_fun() %>% rename(org_na = na_count) )
+```
+
+```{r}
+write_csv(org_na, "../outputs/2025-09-22_MissingDataSummaryForPotterV1.csv")
+
+```
