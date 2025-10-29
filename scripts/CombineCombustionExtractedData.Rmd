@@ -165,7 +165,7 @@ lcc_terrain = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-22_LCC_Terrain
 lcc_tc = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-18_TreeCover_LCC.csv")
 lcc_twi = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-14_LCC_TWI.csv")
 lcc_cna = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-20_LCC_ClimateNormals.csv")
-lcc_fwi = read_csv("../outputs/2025-08-18_cleaned/csv/2025-10-10_LCC_fwi.csv")
+lcc_fwi = read_csv("../outputs/2025-08-18_cleaned/csv/2025-10-28_LCC_fwi.csv")
 lcc_index = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-18_LCC_Indices.csv")
 lcc_landcover = read_csv( "../outputs/2025-08-18_cleaned/csv/2025-09-23_LCC_LandCover.csv")
 ```
@@ -191,14 +191,31 @@ lcc_fwi
 ## Check NA
 
 ```{r}
-lcc_df %>% filter(if_any(everything(), is.na))
+lcc_df %>% filter(if_any(everything(), is.na)) 
 
 ```
+
+```{r}
+lcc_df %>% drop_na(FWI)
+
+```
+
+
+```{r}
+( lcc_df_final1 = lcc_df %>% 
+  drop_na(date) %>% 
+  rename(fireYr = fireYr.x) %>% 
+  mutate( DOB_lst= lubridate::yday(date),
+          fireYr = as.numeric(fireYr)) 
+)
+
+```
+
 
 # Save project DF
 
 ```{r}
-write_csv(lcc_df, "../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+write_csv(lcc_df_final1, "../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
 ```
 
 ## ORG

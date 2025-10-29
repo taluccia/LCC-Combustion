@@ -121,7 +121,7 @@ write_csv(lc_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-03_LC_site_fwi.
 write_csv(org_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-09-09_ORG_fwi.csv")
 
 
-write_csv(lcc_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-10_LCC_fwi.csv")
+write_csv(lcc_fwi_sub, "../outputs/2025-08-18_cleaned/csv/2025-10-28_LCC_fwi.csv")
 ```
 
 

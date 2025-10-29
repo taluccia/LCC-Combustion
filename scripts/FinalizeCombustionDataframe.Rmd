@@ -31,7 +31,7 @@ library(tidyverse)
 ```{r}
 lc_sites = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_site_Predictors.csv")
 fisl_sites = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_Site_Predictors.csv")
-lcc = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+lcc = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
 org = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_ORG_Predictors.csv")
 ```
 
@@ -91,8 +91,8 @@ clean_na <- function(df) {
 ( fisl_clean = fisl_sites %>% clean_na() )
 ( lc_clean = lc_sites %>% clean_na() )
 ( lcc_clean = lcc %>% clean_na() %>% 
-  filter(fireYr != "unknown") %>% # remove fire year unknown
-  filter(fireYr >2000) %>% # remove fire older than 2000
+  #filter(fireYr != "unknown") %>% # remove fire year unknown
+  #filter(fireYr >2000) %>% # remove fire older than 2000
   filter(ID != "LCC_47" | ID !="LCC_48")  )
 
 ( org_clean = org %>% clean_na() %>% rename(combusted_above = above.carbon.combusted, burn_depth = burn.depth, combusted_below = below.ground.carbon.combusted) %>% # remove fire year unknown
@@ -185,7 +185,7 @@ org_clean %>% filter(is.na(landcover_name))
 ```{r}
 write_csv(lc_clean,"../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_CombustionModelPredictors.csv")
 write_csv(fisl_clean, "../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_CombustionModelPredictors.csv")
-write_csv(lcc_clean, "../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_CombustionModelPredictors.csv")
+write_csv(lcc_clean, "../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_CombustionModelPredictors.csv")
 write_csv(org_clean, "../outputs/2025-08-31_Cleaned_DF/2025-10-03_ORG_CombustionModelPredictors.csv")
 ```
 

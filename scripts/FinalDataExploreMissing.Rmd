@@ -33,7 +33,7 @@ fisl_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_FISL_Site_Predic
 
 ```{r}
 
-lcc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_LCC_Predictors.csv")
+lcc_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
 org_df = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-09-23_ORG_Predictors.csv")
 ```
 
@@ -377,6 +377,28 @@ make_na_barplot(lc_df,   "LC Field Data Count of Missing Values per Variable", "
 make_na_barplot(fisl_df, "Fisl Field Data Count of Missing Values per Variable", "2025-09-17_fisl_missing_counts.png")
 make_na_barplot(org_df,  "Combustion v1 Field Data Count of Missing Values per Variable", "2025-09-17_org_missing_counts.png")
 make_na_barplot(lcc_df,  "LCC Field Data Count of Missing Values per Variable", "2025-09-17_lcc_missing_counts.png")
+
+```
+
+```{r}
+plot_and_save_histograms <- function(df, outdir = "../figures", bins = 30) {
+  dir.create(outdir, showWarnings = FALSE)
+  num_cols <- names(df)[sapply(df, is.numeric)]
+  
+  for (col in num_cols) {
+    p <- ggplot(df, aes(x = .data[[col]])) +
+      geom_histogram(bins = bins, fill = "darkgreen", color = "white") +
+      labs(title = paste("Histogram of", col), x = col, y = "Count") +
+      theme_minimal()
+    
+    ggsave(filename = file.path(outdir, paste0("hist_", col, ".png")), plot = p, width = 5, height = 4)
+  }
+}
+
+```
+
+```{r}
+plot_and_save_histograms(lcc_df)
 
 ```
 
