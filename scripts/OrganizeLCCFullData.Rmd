@@ -1,0 +1,177 @@
+---
+title: "LCC FullData"
+author: "Anna Talucci"
+date: "2025-11-07"
+output: html_document
+---
+
+# Overview
+Finalize dataframe of predictors
+
+
+Check missing data
+Figure for missing data
+
+Combine LC, Fisl, and ORG data
+
+# Packages 
+
+```{r}
+library(tidyverse)
+
+```
+
+# Data 
+```{r}
+lcc_combustion = read_csv("../data/lcc_combustion/2025-10-28_LCC_CombustionModelPredictors_predictions.csv")
+
+lcc_id = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
+
+lcc_spd = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
+
+lc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LC_standAge.csv")
+
+lc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
+
+```
+
+```{r}
+fieldstandage = read_csv("../data/lcc_standAge/LCC_Site_Data_download_2025-11-07.csv")
+```
+
+lcc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
+lcc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
+
+# View Data
+
+```{r}
+lcc_combustion
+lcc_id
+lcc_spd
+lcc_stand
+lcc_fri
+```
+
+
+# join Data
+
+```{r}
+( lcc_combustion1 = lcc_combustion %>% 
+    rename(ID = id) %>%
+    dplyr::select(ID, pred_burn_depth:pred_combusted_below))
+
+( lcc_id1 = lcc_id %>%
+  dplyr::select(ID, researcher, study_area, site, year_of_burn, eco_type) )
+```
+
+```{r}
+( lcc = lcc_id1 %>%
+  full_join(lcc_combustion1, by = "ID") %>%
+    full_join(lcc_spd, by = "ID") %>%
+    full_join(lcc_stand, by = "ID") %>%
+    full_join(lcc_fri, by = "ID") %>%
+    relocate(ID, project_name, lat, lon, fireYr) %>%
+    rename(project = project_name)
+)
+```
+
+
+# Sites with missing data
+
+```{r}
+clean_na <- function(df) {
+  df %>%
+    mutate(across(everything(), ~ {
+      x <- .
+      if (is.character(x) | is.factor(x)) {
+        x <- trimws(as.character(x))        # remove extra spaces
+        x[x %in% c("", "NA", "NaN")] <- NA  # replace with real NA
+      } else if (is.numeric(x)) {
+        x[is.nan(x) | is.infinite(x)] <- NA # fix NaN, Inf
+      }
+      x
+    }))
+}  
+
+```
+
+```{r}
+missing_data_fun <- function(df){df  %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "na_count") %>%
+  arrange(desc(na_count))
+}
+```
+
+```{r}
+lcc %>% clean_na() %>% missing_data_fun()
+```
+
+```{r}
+( missing_sites = lcc %>% filter(is.na(pred_burn_depth)) )
+```
+
+```{r eval=FALSE, include=FALSE}
+write.csv(missing_sites, "../outputs/2025-11-12_MeetingData/MissingCombustion.csv", row.names=F)
+```
+
+
+
+```{r}
+( missing_sites_stand_age = lcc %>% filter(is.na(standAge)) )
+```
+```{r}
+unique(missing_sites_stand_age$site)
+```
+```{r}
+
+cat(paste0(sprintf("'%s'", sort(unique(missing_sites_stand_age$site))), collapse = ", "))
+
+```
+
+```{r}
+( missing_sites_FRI = lcc %>% filter(is.na(fri)) )
+```
+
+
+# Fill missing stand age
+
+
+```{r}
+( standAge_filler = fieldstandage %>% 
+  dplyr::select(Researcher:site, Stand_age) %>%
+  filter(site %in% c('21', '23', '25', '27', '29', '31', '33', '35', '37', '39', 'NP 19-2 Unburned', 'ParB3_LCC3', 'Pas-01', 'SM 31-1 Burned', 'SM 31-2 Unburned', 'SM 44-2 Unburned', 'Sweden 41', 'Sweden 43', 'Sweden 45', 'Sweden 51', 'Sweden 53', 'Sweden 55', 'Sweden A', 'Sweden B', 'Sweden C', 'Sweden D', 'WF-LCC-1', 'WF-LCC-2', 'WF-LCC-3', 'YKD')) %>%
+    dplyr::select(site, Stand_age)
+)
+```
+
+
+```{r}
+standAge_filled <- lcc %>%
+  left_join(standAge_filler, by = "site", suffix = c("", ".fill")) %>%
+  mutate(standAge = if_else(is.na(standAge), Stand_age, standAge)) %>%
+  select(-Stand_age)
+
+standAge_filled
+```
+
+
+```{r}
+( missingStandAgeAfterFill = standAge_filled %>% filter(is.na(standAge)) )
+```
+
+```{r}
+standAge_filled %>% filter(researcher=="Gundale/Nilsson")
+```
+
+
+```{r eval=FALSE, include=FALSE}
+write.csv(missingStandAgeAfterFill, "../outputs/2025-11-12_MeetingData/MissingStandAge.csv", row.names=F)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+write.csv(standAge_filled, "../outputs/LCC_cleaned/csv/2025-11-09_LCC_FullData.csv", row.names=F)
+```
