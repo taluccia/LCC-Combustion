@@ -1,0 +1,31 @@
+---
+title: "Compare Data frames"
+author: "Anna Talucci"
+date: "2025-11-13"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(waldo)
+```
+
+
+```{r}
+df1014 = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-14_CombustionModelPredictors.csv")
+
+df1003 = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_CombustionModelPredictors.csv")
+```
+
+
+
+```{r}
+compare(df1014, df1003)
+```
+
+
+```{r}
+
+( rows_in_df1_not_df2 <- anti_join(df1003, df1014, by = "ID") )
+
+```
