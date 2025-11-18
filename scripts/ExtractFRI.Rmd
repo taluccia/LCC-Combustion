@@ -26,12 +26,54 @@ library(tidyverse)
 fri = rast("../data/FRI/fire_return_interval_combined_1972_2022_landcover.tif")
 ```
 
+```{r}
+min(fri)
+max(fri)
+```
+```{r}
+# Plot histogram
+hist(fri,
+     main = "Histogram of Raster Values",
+     xlab = "Value",
+     ylab = "Frequency",
+     col = "lightblue")  # optional: control bin count
+```
+
+```{r}
+fri_scaled <- fri / 1000
+```
+
+```{r}
+plot(fri_scaled)
+```
+
+```{r}
+library(tmap)
+library(viridis)
+tmap_mode("plot")
+
+(map = tm_shape(fri) +
+  tm_raster(
+    style = "cont",                      # continuous
+    palette = viridis(10),                # or "viridis", "plasma", etc.
+    breaks = c(100, 200, 300, 400, 500, 600, 1000, 2000, 5000, 10000),
+    title = "Fire Return Interval (Years)",
+    colorNA = "gray90",
+    textNA = "No Data"
+  ) +
+  tm_layout(legend.outside = TRUE)
+)
+```
+```{r}
+tmap_save(map, filename = "../figures/meetingSlides/fri_map.png", width = 2000, height = 1500, dpi = 300)
+
+```
 
 ## LC and LCC points
 
 ```{r}
 
-lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-21_lc_pts_WGS84.shp")
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-10-03_lc_site_pts_WGS84.shp")
 
 lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-22_lcc_pts_all_WGS84.shp")
 ```
@@ -133,10 +175,11 @@ lcc_fri$fri[is.na(lcc_fri$fri) & lcc_fri$ID == "LCC_62"] <- 5790.12598
 ```{r}
 lcc_fri
 ```
+
 ## Write to CSV
 
 ```{r}
-write_csv(lc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
+write_csv(lc_fri, "../outputs/2025-08-18_cleaned/csv/2025-11-18_LC_Site_FRI.csv")
 write_csv(lcc_fri, "../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
 ```
 

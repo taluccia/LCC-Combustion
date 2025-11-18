@@ -22,6 +22,7 @@ library(tidyverse)
 ```
 
 # Data 
+
 ```{r}
 lcc_combustion = read_csv("../data/lcc_combustion/2025-10-28_LCC_CombustionModelPredictors_predictions.csv")
 
@@ -29,9 +30,9 @@ lcc_id = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
 
 lcc_spd = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
 
-lc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LC_standAge.csv")
+lcc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
 
-lc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LC_FRI.csv")
+lcc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
 
 ```
 
@@ -147,31 +148,66 @@ cat(paste0(sprintf("'%s'", sort(unique(missing_sites_stand_age$site))), collapse
 )
 ```
 
+```{r}
+( standAge_field = fieldstandage %>% 
+  dplyr::select(Researcher:site, Stand_age) %>%
+    dplyr::select(site, Stand_age) %>%
+    rename(fieldAge = Stand_age)
+)
+```
 
 ```{r}
 standAge_filled <- lcc %>%
   left_join(standAge_filler, by = "site", suffix = c("", ".fill")) %>%
   mutate(standAge = if_else(is.na(standAge), Stand_age, standAge)) %>%
-  select(-Stand_age)
+  select(-Stand_age) %>%
+  rename(hybridAge = standAge)
 
 standAge_filled
 ```
 
+```{r}
+standAge_fieldComputed <- lcc %>%
+  left_join(standAge_field, by = "site") %>%
+  dplyr::select(ID, standAge, fieldAge) %>%
+  rename(computedAge = standAge)
+
+standAge_fieldComputed
+```
+
 
 ```{r}
-( missingStandAgeAfterFill = standAge_filled %>% filter(is.na(standAge)) )
+( missingStandAgeAfterFill = standAge_filled %>% filter(is.na(hybridAge)) )
 ```
 
 ```{r}
 standAge_filled %>% filter(researcher=="Gundale/Nilsson")
 ```
+# Add computed and field age to full data frame
 
+```{r}
+
+( lcc_hybridAge = standAge_filled %>% 
+    full_join(standAge_fieldComputed, by = "ID") %>% 
+    filter(year_of_burn >2000) %>% 
+    filter(year_of_burn != "unknown") %>%
+    filter(!is.na(FWI))
+)
+```
+
+# Save files
 
 ```{r eval=FALSE, include=FALSE}
 write.csv(missingStandAgeAfterFill, "../outputs/2025-11-12_MeetingData/MissingStandAge.csv", row.names=F)
 ```
-
+```{r eval=FALSE, include=FALSE}
+write.csv(lcc_hybridAge, "../outputs/LCC_cleaned/csv/2025-11-18_LCC_SpatialData.csv", row.names=F)
+```
 
 ```{r eval=FALSE, include=FALSE}
 write.csv(standAge_filled, "../outputs/LCC_cleaned/csv/2025-11-09_LCC_FullData.csv", row.names=F)
+```
+
+```{r eval=FALSE, include=FALSE}
+write.csv(standAge_fieldComputed, "../outputs/LCC_cleaned/csv/2025-11-10_LCC_StandAgeFieldComputed.csv", row.names=F)
 ```

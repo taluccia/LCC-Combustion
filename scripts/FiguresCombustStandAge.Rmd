@@ -14,24 +14,34 @@ Produce figures for slides for LCC meeting on November 12, 2025.
 
 ```{r}
 library(tidyverse)
-
+library(ggbreak)
 ```
 
 # Data 
 
 ```{r}
-lcc= read_csv("../outputs/LCC_cleaned/csv/2025-11-09_LCC_FullData.csv")
+predictors = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-14_CombustionModelPredictors.csv")
+```
+
+```{r}
+lcc= read_csv("../outputs/LCC_cleaned/csv/2025-11-14_LCC_FullData.csv")
 
 ```
 
+```{r}
+standAge = read_csv("../outputs/LCC_cleaned/csv/2025-11-10_LCC_StandAgeFieldComputed.csv")
+```
 
 # View Data
 
 ```{r}
 lcc
+standAge
 ```
 
-
+```{r}
+( predictors1 = predictors %>% dplyr::select(project, combusted_above, combusted_below, burn_depth) )
+```
 
 # Combustion
 
@@ -44,11 +54,69 @@ lcc
 sites %>% filter(researcher == "Gundale/Nilsson")
 ```
 
-# Plots
+```{r}
+min(sites$fri)
+max(sites$fri)
+```
+
+```{r}
+sites %>% filter(fri > 600)
+sites %>% filter(fri <= 600)
+```
+
+# Stand Aged Paired
+
+```{r}
+(df_long <- standAge %>%
+  rename(Field = fieldAge, Computed = standAge) %>%
+  pivot_longer(
+    cols = c(Field, Computed),
+    names_to = "source",
+    values_to = "stand_age"
+  ) %>%
+  mutate(
+    source = recode(source,
+      field_stand_age = "Field",
+      computed_stand_age = "Computed"
+    )
+  )
+)
+```
+
+```{r}
 
 
+( paired_standAge = df_long %>%
+  ggplot(aes(x = source, y = stand_age, group = ID)) +
+  geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ researcher, scales = "free_y") +
+  scale_color_manual(
+    values = c("Field" = "#1b9e77", "Computed" = "#d95f02")  # choose your colors
+  ) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = NULL,
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  )
+)
+```
 
-
+```{r}
+ ggsave(
+      filename = "../figures/meetingSlides/StandAgePaired.png",
+      plot = paired_standAge,
+      width = 12,
+      height = 10,
+      dpi = 400,
+      bg = "white"
+    )
+```
 # Boxplot with jitter function
 na.rm = TRUE
 ```{r}
@@ -96,6 +164,95 @@ plot_box_jitter <- function(df, x_var, y_vars,
       )
     
     # File path for saving
+    file_path <- file.path(out_dir, paste0("boxplot_predictors_", y_var, ".png"))
+    
+    # Save the figure
+    ggsave(
+      filename = file_path,
+      plot = p,
+      width = width_in,
+      height = 5,
+      dpi = 400,
+      bg = "white"
+    )
+    
+    message("Saved: ", file_path, " (width = ", width_in, " in, base size = ", base_size, ")")
+    return(p)
+  })
+  
+  names(plots) <- y_vars
+  return(plots)
+}
+
+```
+
+```{r}
+y_vars <- c("pred_burn_depth", "pred_combusted_above", "pred_combusted_below", "hybridAge", "fri")
+
+custom_labels <- c(
+  pred_burn_depth = "Burn Depth (cm)",
+  pred_combusted_above = "Aboveground Carbon (g C/m²)",
+  pred_combusted_below = "Belowground Carbon (g C/m²)",
+  hybridAge = "Stand Age (years)",
+  fri = "Fire Return Interval (years)"
+)
+
+plots <- plot_box_jitter(
+  df = sites,
+  x_var = "researcher",
+  y_vars = y_vars,
+  y_labels = custom_labels
+)
+
+```
+
+
+```{r}
+
+plot_box_jitter_fri <- function(df, x_var, y_vars,
+                            out_dir = "../figures/meetingSlides/",
+                            y_labels = NULL) {
+  # Ensure output directory exists
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  
+  # Determine number of categories on x-axis
+  n_levels <- length(unique(df[[x_var]]))
+  
+  # Dynamically scale width and base font size
+  width_in <- max(6, n_levels * 0.5)   # 0.5 inch per category, minimum width 6
+  base_size <- max(10, min(18, 10 + (n_levels / 5)))  # scale text moderately
+  
+  # Loop through each y variable
+  plots <- lapply(y_vars, function(y_var) {
+    # Get y-axis label (if provided)
+    y_lab <- if (!is.null(y_labels) && y_var %in% names(y_labels)) y_labels[[y_var]] else y_var
+    
+    # Build plot
+    p <- ggplot(df, aes(x = .data[[x_var]], y = .data[[y_var]],
+                        fill = .data[[x_var]], color = .data[[x_var]])) +
+      geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      scale_y_break(c(2300, 5500)) + # the range you want to skip
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+      #geom_hline(yintercept = mean(df[[y_var]], na.rm = TRUE),
+       #          linetype = "dashed", color = "tomato", alpha = 0.6) +
+      theme_bw(base_size = base_size) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        plot.title = element_text(face = "bold", hjust = 0.5, size = base_size + 2),
+        axis.title = element_text(face = "bold")
+      ) +
+      labs(
+        x = "Research Group",
+        y = y_lab
+      )
+    
+    # File path for saving
     file_path <- file.path(out_dir, paste0("boxplot_", y_var, ".png"))
     
     # Save the figure
@@ -119,17 +276,12 @@ plot_box_jitter <- function(df, x_var, y_vars,
 ```
 
 ```{r}
-y_vars <- c("pred_burn_depth", "pred_combusted_above", "pred_combusted_below", "standAge", "fri")
+y_vars <- c("fri")
 
-custom_labels <- c(
-  pred_burn_depth = "Burn Depth (cm)",
-  pred_combusted_above = "Aboveground Carbon (kg C/m²)",
-  pred_combusted_below = "Belowground Carbon (kg C/m²)",
-  standAge = "Stand Age (years)",
-  fri = "Fire Return Interval (years)"
+custom_labels <- c(fri = "Fire Return Interval (years)"
 )
 
-plots <- plot_box_jitter(
+plots <- plot_box_jitter_fri(
   df = sites,
   x_var = "researcher",
   y_vars = y_vars,
@@ -137,5 +289,4 @@ plots <- plot_box_jitter(
 )
 
 ```
-
 

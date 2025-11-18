@@ -200,7 +200,8 @@ set.seed(56)
 
 
 ( lc_site = lc_id %>% 
-    select(ID:plot, unique_site_id, official_fire_scar, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted) %>% mutate(combusted_below = total_c_combusted - combustion_above) %>%
+    dplyr::select(ID:plot, unique_site_id, official_fire_scar, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted, reburn_age_original_estimate) %>% 
+    mutate(combusted_below = total_c_combusted - combustion_above) %>%
     rename(lat = latitude, lon = longitude, fireYr = recent_burn, combusted_above = combustion_above) %>%
     select(-total_c_combusted) %>%
     group_by(fire, site) %>%
@@ -211,7 +212,8 @@ set.seed(56)
       fireYr = mean(fireYr),
       combusted_above = mean(combusted_above),
       burn_depth = mean(burn_depth),
-      combusted_below = mean(combusted_below)
+      combusted_below = mean(combusted_below),
+      standAge = mean(reburn_age_original_estimate)
     ) %>%
     arrange(site) %>%
     ungroup() %>%
@@ -258,7 +260,7 @@ n_distinct(fisl_site$lat)
 n_distinct(fisl_site$lon)
 ```
 ```{r}
-write_csv(lc_site, "../outputs/LCC_cleaned/csv/2025-09-30_LC_Site_fullCombustionID.csv")
+write_csv(lc_site, "../outputs/LCC_cleaned/csv/2025-11-18_LC_Site_fullCombustionID.csv")
 write_csv(fisl_site, "../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
 ```
 
