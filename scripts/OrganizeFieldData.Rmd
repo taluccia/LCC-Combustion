@@ -194,13 +194,16 @@ write_csv(fisl_id, "../outputs/LCC_cleaned/csv/FISL_ID_plot_2025-10-09.csv")
 # Site level
 
 Aggregate LC and Fisl to site level and remove body data (which is included in the original combustion data) from fisl. 
+```{r}
+lc_id %>% filter(site == 89)
+```
 
 ```{r}
 set.seed(56)
 
 
 ( lc_site = lc_id %>% 
-    dplyr::select(ID:plot, unique_site_id, official_fire_scar, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted, reburn_age_original_estimate) %>% 
+    dplyr::select(ID:plot, unique_site_id, official_fire_scar, latitude, longitude, recent_burn, combustion_above, burn_depth, total_c_combusted, stdage_final) %>% 
     mutate(combusted_below = total_c_combusted - combustion_above) %>%
     rename(lat = latitude, lon = longitude, fireYr = recent_burn, combusted_above = combustion_above) %>%
     select(-total_c_combusted) %>%
@@ -213,7 +216,7 @@ set.seed(56)
       combusted_above = mean(combusted_above),
       burn_depth = mean(burn_depth),
       combusted_below = mean(combusted_below),
-      standAge = mean(reburn_age_original_estimate)
+      stdage_final = mean(stdage_final)
     ) %>%
     arrange(site) %>%
     ungroup() %>%
@@ -260,7 +263,7 @@ n_distinct(fisl_site$lat)
 n_distinct(fisl_site$lon)
 ```
 ```{r}
-write_csv(lc_site, "../outputs/LCC_cleaned/csv/2025-11-18_LC_Site_fullCombustionID.csv")
+write_csv(lc_site, "../outputs/LCC_cleaned/csv/2025-11-26_LC_Site_fullCombustionID.csv")
 write_csv(fisl_site, "../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombustionID.csv")
 ```
 
@@ -270,14 +273,22 @@ write_csv(fisl_site, "../outputs/LCC_cleaned/csv/2025-09-30_FISL_Site_fullCombus
 ```{r}
 lcc_id
 ( lcc_site = lcc_id  %>% 
-  select(ID:researcher, study_area, site, latitude, longitude, year_of_burn) %>%
+  select(ID:researcher, study_area, site, latitude, longitude, year_of_burn, burn_depth) %>%
     rename(lat = latitude, lon = longitude, fireYr = year_of_burn) %>%
     mutate(project = "LCC") %>%
   filter(as.numeric(fireYr) >2000)  %>%
     relocate(ID, project) %>%
-    select(ID, project, researcher, site, lat, lon, fireYr))
+    select(ID, project, researcher, site, lat, lon, fireYr, burn_depth))
 
 ```
+```{r}
+( lcc_fieldBurnDepth = lcc_site %>% dplyr::select(ID, burn_depth) %>% rename(burnDepthField = burn_depth) )
+```
+
+```{r}
+write_csv(lcc_fieldBurnDepth, "../outputs/LCC_cleaned/csv/2025-11-18_LCC_burnDepthField.csv")
+```
+
 
 # Explore missing Combustion and fire years before 2001
 

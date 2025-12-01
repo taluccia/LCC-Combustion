@@ -26,7 +26,7 @@ library(mapview)
 ## Field Points
 
 ```{r}
-lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lc_full_pts_WGS84.shp")
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-10-03_lc_site_pts_WGS84.shp")
 
 lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-29_lcc_full_pts_WGS84.shp",)
 
@@ -82,6 +82,11 @@ CAN_fires
 
 ```{r}
 ak_poly <- st_cast(ak_poly, "MULTIPOLYGON")
+```
+
+```{r}
+min(ak_poly$FIREYEAR)
+max(ak_poly$FIREYEAR)
 ```
 # Process for AK fires
 
@@ -261,7 +266,7 @@ lc_pts_df = lc_pts %>% st_drop_geometry()
 
 
 ```{r}
-write_csv(lc_final, "../outputs/2025-08-18_cleaned/csv/2025-09-17_LC_standAge.csv")
+write_csv(lc_final, "../outputs/2025-08-18_cleaned/csv/2025-11-19_LC_standAge.csv")
 write_csv(lcc_final, "../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
 
 ```

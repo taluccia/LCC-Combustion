@@ -26,10 +26,11 @@ library(tidyverse)
 ```{r}
 lc_predictors = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-03_LC_site_Predictors.csv")
 
-lc_id = read_csv("../outputs/LCC_cleaned/csv/2025-11-18_LC_Site_fullCombustionID.csv")
+lc_id = read_csv("../outputs/LCC_cleaned/csv/2025-11-26_LC_Site_fullCombustionID.csv")
 
 lc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-11-18_LC_Site_FRI.csv")
-
+lc_sa = read_csv("../outputs/2025-08-18_cleaned/csv/2025-11-19_LC_standAge.csv")
+lc_fa = read_csv("../outputs/2025-08-18_cleaned/csv/2025-11-19_LC_Site_ForestAge.csv")
 ```
 
 
@@ -40,25 +41,29 @@ lc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-11-18_LC_Site_FRI.csv"
 lc_predictors
 lc_id
 lc_fri
+lc_sa
+lc_fa
 ```
 
 
 # join Data
 ```{r}
-( fieldStandAge = lc_id %>% dplyr::select(site_ID, standAge) %>% rename(ID = site_ID) )
+( fieldStandAge = lc_id %>% dplyr::select(site_ID, stdage_final) %>% rename(ID = site_ID, fieldAge = stdage_final) )
 ```
 
 ```{r}
 ( lc = lc_predictors %>%
   full_join(fieldStandAge, by = "ID") %>%
     full_join(lc_fri, by = "ID") %>%
+    full_join(lc_sa, by = "ID") %>%
+    full_join(lc_fa, by = "ID") %>%
     relocate(ID, project, site, lat, lon, fireYr) %>%
     dplyr::select(-ID_plot_list, -LandCover, -row_id) %>%
-    rename(fieldAge = standAge)
+    rename(computedAge = standAge, fa00 = ForestAge_TC000, fa10 = ForestAge_TC010, fa20 = ForestAge_TC020, fa30 = ForestAge_TC030, fastd = LastTimeTCloss_std, faint = TCloss_intensity)
 )
 ```
 
 
 ```{r eval=FALSE, include=FALSE}
-write.csv(lc, "../outputs/LCC_cleaned/csv/2025-11-18_LC_site_SpatialData.csv", row.names=F)
+write.csv(lc, "../outputs/LCC_cleaned/csv/2025-11-26_LC_site_SpatialData.csv", row.names=F)
 ```

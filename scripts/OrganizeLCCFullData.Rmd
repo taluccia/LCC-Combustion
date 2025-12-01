@@ -25,7 +25,7 @@ library(tidyverse)
 
 ```{r}
 lcc_combustion = read_csv("../data/lcc_combustion/2025-10-28_LCC_CombustionModelPredictors_predictions.csv")
-
+lcc_combustNewBD = read.csv("../data/lcc_combustion/2025-10-28_LCC_CombustionModelPredictors_predictions_LCC_11_18.csv")
 lcc_id = read_csv("../outputs/LCC_cleaned/csv/LCC_ID_2025-08-21.csv")
 
 lcc_spd = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.csv")
@@ -33,24 +33,23 @@ lcc_spd = read_csv("../outputs/2025-08-31_Cleaned_DF/2025-10-28_LCC_Predictors.c
 lcc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
 
 lcc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
-
+lcc_fa = read_csv("../outputs/2025-08-18_cleaned/csv/2025-11-19_LCC_ForestAge.csv")
 ```
 
 ```{r}
 fieldstandage = read_csv("../data/lcc_standAge/LCC_Site_Data_download_2025-11-07.csv")
 ```
 
-lcc_stand = read_csv("../outputs/2025-08-18_cleaned/csv/2025-09-17_LCC_standAge.csv")
-lcc_fri = read_csv("../outputs/2025-08-18_cleaned/csv/2025-08-22_LCC_FRI.csv")
-
 # View Data
 
 ```{r}
 lcc_combustion
+lcc_combustNewBD
 lcc_id
 lcc_spd
 lcc_stand
 lcc_fri
+lcc_fa
 ```
 
 
@@ -60,7 +59,7 @@ lcc_fri
 ( lcc_combustion1 = lcc_combustion %>% 
     rename(ID = id) %>%
     dplyr::select(ID, pred_burn_depth:pred_combusted_below))
-
+( lcc_combustNewBD1 = lcc_combustNewBD %>% rename(ID = id) %>% dplyr::select(ID, pred_burn_depth_LCC_11_18) )
 ( lcc_id1 = lcc_id %>%
   dplyr::select(ID, researcher, study_area, site, year_of_burn, eco_type) )
 ```
@@ -68,9 +67,11 @@ lcc_fri
 ```{r}
 ( lcc = lcc_id1 %>%
   full_join(lcc_combustion1, by = "ID") %>%
+    full_join(lcc_combustNewBD1, by = "ID") %>%
     full_join(lcc_spd, by = "ID") %>%
     full_join(lcc_stand, by = "ID") %>%
     full_join(lcc_fri, by = "ID") %>%
+    full_join(lcc_fa, by = "ID") %>%
     relocate(ID, project_name, lat, lon, fireYr) %>%
     rename(project = project_name)
 )
@@ -191,7 +192,10 @@ standAge_filled %>% filter(researcher=="Gundale/Nilsson")
     full_join(standAge_fieldComputed, by = "ID") %>% 
     filter(year_of_burn >2000) %>% 
     filter(year_of_burn != "unknown") %>%
-    filter(!is.na(FWI))
+    filter(!is.na(FWI)) %>%
+    rename(fa00 = ForestAge_TC000, fa10 = ForestAge_TC010, fa20 = ForestAge_TC020, fa30 = ForestAge_TC030, fastd = LastTimeTCloss_std, faint = TCloss_intensity) %>%
+    dplyr::select(-pred_burn_depth) %>%
+    rename(pred_burn_depth = pred_burn_depth_LCC_11_18)
 )
 ```
 
@@ -201,7 +205,7 @@ standAge_filled %>% filter(researcher=="Gundale/Nilsson")
 write.csv(missingStandAgeAfterFill, "../outputs/2025-11-12_MeetingData/MissingStandAge.csv", row.names=F)
 ```
 ```{r eval=FALSE, include=FALSE}
-write.csv(lcc_hybridAge, "../outputs/LCC_cleaned/csv/2025-11-18_LCC_SpatialData.csv", row.names=F)
+write.csv(lcc_hybridAge, "../outputs/LCC_cleaned/csv/2025-11-29_LCC_SpatialData.csv", row.names=F)
 ```
 
 ```{r eval=FALSE, include=FALSE}
