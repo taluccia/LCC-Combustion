@@ -1,0 +1,193 @@
+---
+title: "ExtractStandAge"
+author: "Anna Talucci"
+date: "2025-11-19"
+output: html_document
+---
+
+```{r}
+library(terra)  # modern replacement for raster
+library(sf)
+```
+
+# Load LCC Points
+
+# Load Rasters
+
+```{r}
+fa00 = rast("../outputs/standAge1km/ForestAge_TC000.tif")
+fa10 = rast("../outputs/standAge1km/ForestAge_TC010.tif")
+fa20 = rast("../outputs/standAge1km/ForestAge_TC020.tif")
+
+fa30 = rast("../outputs/standAge1km/ForestAge_TC030.tif")
+fastd = rast("../outputs/standAge1km/LastTimeTCloss_std.tif")
+faint = rast("../outputs/standAge1km/TCloss_intensity.tif")
+```
+
+```{r}
+fa00
+```
+
+```{r}
+plot(fa00)
+plot(fa10)
+plot(fa20)
+```
+
+
+
+## LC and LCC points
+
+```{r}
+
+lc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-10-03_lc_site_pts_WGS84.shp")
+
+lcc_pts = st_read("../outputs/LCC_cleaned/points/shapefiles/2025-08-22_lcc_pts_all_WGS84.shp")
+```
+
+## View 
+
+```{r}
+lc_pts
+lcc_pts
+```
+
+## Check if crs match
+
+```{r}
+crs(fa00) == crs(lc_pts)
+crs(fa00) == crs(lcc_pts)
+```
+
+
+```{r}
+lc_pts_proj = lc_pts %>%
+  mutate(row_id = row_number()) %>% 
+  rename(proj_ID = ID, ID=row_id) 
+
+lcc_pts_proj = lcc_pts %>%
+  mutate(row_id = row_number()) %>% 
+  rename(proj_ID = ID, ID=row_id) 
+
+```
+
+```{r}
+lcc_pts_proj
+```
+
+# Sf to vect
+
+```{r}
+lc_vec = vect(lc_pts_proj)
+lcc_vec = vect(lcc_pts_proj)
+```
+
+
+# Extract values at points
+
+## LC
+
+```{r}
+( fa00_lc = extract(fa00, lc_vec, xy=TRUE) )
+( fa10_lc = extract(fa10, lc_vec, xy=TRUE) )
+( fa20_lc = extract(fa20, lc_vec, xy=TRUE) )
+( fa30_lc = extract(fa30, lc_vec, xy=TRUE) )
+( fastd_lc = extract(fastd, lc_vec, xy=TRUE) )
+( faint_lc = extract(faint, lc_vec, xy=TRUE) )
+```
+
+## LCC
+
+```{r}
+( fa00_lcc = extract(fa00, lcc_vec, xy=TRUE) )
+( fa10_lcc = extract(fa10, lcc_vec, xy=TRUE) )
+( fa20_lcc = extract(fa20, lcc_vec, xy=TRUE) )
+( fa30_lcc = extract(fa30, lcc_vec, xy=TRUE) )
+( fastd_lcc = extract(fastd, lcc_vec, xy=TRUE) )
+( faint_lcc = extract(faint, lcc_vec, xy=TRUE) )
+
+```
+
+# Join tx info to point extracted
+
+## Function to drop geometry
+
+```{r}
+points_as_df = function(pts){
+  pts %>%
+    st_drop_geometry()
+}
+
+
+(lc_df = lc_pts_proj %>% points_as_df() )
+(lcc_df = lcc_pts_proj %>% points_as_df() %>% rename(project = prjct_n) )
+```
+
+## Function to join extracted values to dataframe
+
+```{r}
+join_clean_function <- function(df1, df2){df1 %>%
+    full_join(., df2, by=c("ID")) %>%
+    dplyr::select(-all_of(c("ID", "x", "y", "project", "lat", "lon", "fireYr"))) %>%
+    rename(ID=proj_ID) %>%
+    relocate(ID)
+   
+  }
+```
+
+## LC
+
+```{r}
+( fa00_lc_join = join_clean_function(fa00_lc, lc_df) )
+( fa10_lc_join = join_clean_function(fa10_lc, lc_df) )
+( fa20_lc_join = join_clean_function(fa20_lc, lc_df) )
+( fa30_lc_join = join_clean_function(fa30_lc, lc_df) )
+( fastd_lc_join = join_clean_function(fastd_lc, lc_df) )
+( faint_lc_join = join_clean_function(faint_lc, lc_df) )
+
+```
+
+# LCC
+
+```{r}
+( fa00_lcc_join = join_clean_function(fa00_lcc, lcc_df) )
+( fa10_lcc_join = join_clean_function(fa10_lcc, lcc_df) )
+( fa20_lcc_join = join_clean_function(fa20_lcc, lcc_df) )
+( fa30_lcc_join = join_clean_function(fa30_lcc, lcc_df) )
+( fastd_lcc_join = join_clean_function(fastd_lcc, lcc_df) )
+( faint_lcc_join = join_clean_function(faint_lcc, lcc_df) )
+
+```
+
+# One data frame
+```{r}
+( allfa_lc = fa00_lc_join %>% 
+  full_join(fa10_lc_join, by = "ID") %>%
+    full_join(fa20_lc_join, by = "ID") %>%
+    full_join(fa30_lc_join, by = "ID") %>%
+    full_join(fastd_lc_join, by = "ID") %>%
+    full_join(faint_lc_join, by = "ID") 
+)
+```
+
+```{r}
+( allfa_lcc = fa00_lcc_join %>% 
+  full_join(fa10_lcc_join, by = "ID") %>%
+    full_join(fa20_lcc_join, by = "ID") %>%
+    full_join(fa30_lcc_join, by = "ID") %>%
+    full_join(fastd_lcc_join, by = "ID") %>%
+    full_join(faint_lcc_join, by = "ID") 
+)
+```
+
+
+## Write to CSV
+
+```{r}
+write_csv(allfa_lc, "../outputs/2025-08-18_cleaned/csv/2025-11-19_LC_Site_ForestAge.csv")
+write_csv(allfa_lcc, "../outputs/2025-08-18_cleaned/csv/2025-11-19_LCC_ForestAge.csv")
+```
+
+
+
+

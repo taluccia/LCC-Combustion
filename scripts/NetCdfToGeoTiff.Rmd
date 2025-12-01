@@ -1,0 +1,69 @@
+---
+title: "NetCdfToGeoTiff"
+author: "Anna Talucci"
+date: "2025-11-18"
+output: html_document
+---
+
+
+
+
+```{r}
+library(terra)  # modern replacement for raster
+
+```
+
+```{r}
+# Single-band or multi-band NetCDF
+r <- rast("../data/standAgeNetCDF/2025111820302222_BGIForestAgeMPIBGC1.0.0.nc")
+r
+
+
+```
+```{r}
+names(r)
+```
+
+```{r}
+crs(r)
+ext(r)
+```
+```{r}
+library(ncdf4)
+nc <- nc_open("../data/standAgeNetCDF/2025111820302222_BGIForestAgeMPIBGC1.0.0.nc")
+print(nc)
+nc_close(nc)
+
+```
+# Add projection
+
+```{r}
+ext(r) <- c(-180, 180, -90, 90)
+crs(r) <- "EPSG:4326"
+
+```
+
+# Define each layer as a separate raster
+
+```{r}
+fa00 <- r[["ForestAge_TC000"]]   # by name
+fa00           
+fa10 <- r[["ForestAge_TC010"]] 
+fa20 <- r[["ForestAge_TC020"]] 
+fa30 <- r[["ForestAge_TC030"]]
+fastd <- r[["LastTimeTCloss_std"]]
+faint <- r[["TCloss_intensity"]]
+
+```
+
+
+
+```{r}
+writeRaster(fa00, "../outputs/standAge1km/ForestAge_TC000.tif", filetype = "GTiff", overwrite = TRUE)
+writeRaster(fa10, "../outputs/standAge1km/ForestAge_TC010.tif", filetype = "GTiff", overwrite = TRUE)
+writeRaster(fa20, "../outputs/standAge1km/ForestAge_TC020.tif", filetype = "GTiff", overwrite = TRUE)
+writeRaster(fa30, "../outputs/standAge1km/ForestAge_TC030.tif", filetype = "GTiff", overwrite = TRUE)
+writeRaster(fastd, "../outputs/standAge1km/LastTimeTCloss_std.tif", filetype = "GTiff", overwrite = TRUE)
+writeRaster(faint, "../outputs/standAge1km/TCloss_intensity.tif", filetype = "GTiff", overwrite = TRUE)
+```
+

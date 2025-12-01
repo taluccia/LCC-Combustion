@@ -1,0 +1,406 @@
+---
+title: "Figures Stand Age Products"
+author: "Anna Talucci"
+date: "2025-11-19"
+output: html_document
+---
+
+# Overview
+
+Produce figures for slides for LCC meeting on November 12, 2025. 
+
+
+# Packages 
+
+```{r}
+library(tidyverse)
+library(ggbreak)
+```
+
+# Data 
+
+```{r}
+lcc = read_csv("../outputs/LCC_cleaned/csv/2025-11-19_LCC_SpatialData.csv")
+lc = read_csv("../outputs/LCC_cleaned/csv/2025-11-26_LC_site_SpatialData.csv")
+```
+
+# View Data
+
+```{r}
+lcc
+lc
+```
+
+# Select Columns of interest
+
+```{r}
+( lc_sa = lc %>% dplyr::select(ID, fire, fireYr, fieldAge, computedAge, fri, fa00, fa10, fa20, fa30, fastd, faint) )
+
+( lcc_sa = lcc %>% dplyr::select(ID, study_area, fireYr, fieldAge, computedAge, fri, fa00, fa10, fa20, fa30, fastd, faint) )
+```
+
+# Summarise
+
+```{r}
+
+lc_sa %>% 
+  rename(field = fieldAge, computed = computedAge) %>%
+  group_by(fire) %>%
+  summarize(
+            fa00_min = min(fa00),
+            fa00_max = max(fa00),
+            fa10_min = min(fa10),
+            fa10_max = max(fa10),
+            fa20_min = min(fa20),
+            fa20_max = max(fa20),
+            fa30_min = min(fa30),
+            fa30_max = max(fa30),
+            field_min = min(field),
+            field_max = max(field),
+            computed_min = min(computed),
+            computed_max = max(computed),
+            fastd_min = min(fastd),
+            fastd_max = max(fastd),
+            faint_min = min(faint),
+            faint_max = max(faint),
+            fri_min = min(fri),
+            fri_max = max(fri)
+            )
+  
+```
+
+# Convert to long format
+
+## Stand age only 
+
+```{r}
+( lc_long <- lc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+```{r}
+( lcc_long <- lcc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+
+## Stand age + fri
+
+```{r}
+( lc_long_sa_fri <- lc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30, fri),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+```{r}
+( lcc_long_sa_fri <- lcc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30, fri),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+## All variables 
+```{r}
+( lc_long_all <- lc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30, fastd, faint, fri),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+```{r}
+( lcc_long_all <- lcc_sa %>%
+    rename(field = fieldAge, computed = computedAge) %>%
+  pivot_longer(
+    cols = c(field, computed, fa00, fa10, fa20, fa30, fastd, faint, fri),
+    names_to = "source",
+    values_to = "stand_age") 
+  )
+
+```
+
+
+# Plots
+
+## Boxplots for stand age varaibles
+
+```{r}
+
+
+( lcc_standage = lcc_long %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ study_area, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LCC_boxplotStandAgeProducts.png", plot = lcc_standage, width = 12, height = 10, dpi = 400, bg = "white" )
+```
+
+```{r}
+
+
+( lc_standage = lc_long %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ fire, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LC_boxplotStandAgeProducts.png", plot = lc_standage, width = 12, height = 10, dpi = 400, bg = "white" )
+```
+
+```{r}
+
+
+( lc_standage_fireYr = lc_long %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ fireYr, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LC_boxplotStandAgeProductsfireYr.png", plot = lc_standage_fireYr, width = 12, height = 10, dpi = 400, bg = "white" )
+```
+
+## boxplots Stand Age plus FRI
+
+```{r}
+
+
+( lcc_standage_fri = lcc_long_sa_fri %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ study_area, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Years",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LCC_boxplotStandAgeFriProducts.png", plot = lcc_standage_fri, width = 12, height = 10, dpi = 400, bg = "white" )
+```
+
+```{r}
+
+
+( lc_standage_fri = lc_long_sa_fri %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ fire, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Years",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LC_boxplotStandAgeFriProducts.png", plot = lc_standage_fri, width = 12, height = 12, dpi = 400, bg = "white" )
+```
+
+
+```{r}
+
+
+( lc_standage_fri_fireYr = lc_long_sa_fri %>%
+  ggplot(aes(x = source, y = stand_age)) +
+   geom_boxplot(width = 0.6, alpha = 0.2, outlier.shape = NA, color = "gray40") +
+      geom_jitter(width = 0.15, alpha = 0.7, size = 1.8, shape = 21, fill=NA) +
+      stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+                   fill = NA, color = "firebrick2") +
+  #geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  #geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ fireYr, scales = "free") +
+  #scale_color_manual(values = c("Field" = "#1b9e77", "Computed" = "#d95f02")) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = "",
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        axis.title.x = element_blank()
+      ) 
+)
+```
+
+```{r}
+ggsave(filename = "../figures/standAgeCompare/LC_boxplotStandAgeFriProductsFireYr.png", plot = lc_standage_fri_fireYr, width = 12, height = 10, dpi = 400, bg = "white" )
+```
+## Paired
+
+```{r}
+
+
+( paired_standAge = df_long %>%
+  ggplot(aes(x = source, y = stand_age, group = ID)) +
+  geom_line(color = "gray70", alpha = 0.6) +  # neutral connecting line
+  geom_point(aes(color = source), size = 3) +
+  facet_wrap(~ researcher, scales = "free_y") +
+  scale_color_manual(
+    values = c("Field" = "#1b9e77", "Computed" = "#d95f02")  # choose your colors
+  ) +
+  theme_minimal(base_size = 13) +
+  labs(
+    x = NULL,
+    y = "Stand Age (years)",
+    color = NULL
+  ) +
+  theme(legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.minor = element_blank()
+  )
+)
+```
