@@ -141,13 +141,7 @@ cat(paste0(sprintf("'%s'", sort(unique(missing_sites_stand_age$site))), collapse
 # Fill missing stand age
 
 
-```{r}
-( standAge_filler = fieldstandage %>% 
-  dplyr::select(Researcher:site, Stand_age) %>%
-  filter(site %in% c('21', '23', '25', '27', '29', '31', '33', '35', '37', '39', 'NP 19-2 Unburned', 'ParB3_LCC3', 'Pas-01', 'SM 31-1 Burned', 'SM 31-2 Unburned', 'SM 44-2 Unburned', 'Sweden 41', 'Sweden 43', 'Sweden 45', 'Sweden 51', 'Sweden 53', 'Sweden 55', 'Sweden A', 'Sweden B', 'Sweden C', 'Sweden D', 'WF-LCC-1', 'WF-LCC-2', 'WF-LCC-3', 'YKD')) %>%
-    dplyr::select(site, Stand_age)
-)
-```
+
 
 ```{r}
 ( standAge_field = fieldstandage %>% 
@@ -157,46 +151,30 @@ cat(paste0(sprintf("'%s'", sort(unique(missing_sites_stand_age$site))), collapse
 )
 ```
 
-```{r}
-standAge_filled <- lcc %>%
-  left_join(standAge_filler, by = "site", suffix = c("", ".fill")) %>%
-  mutate(standAge = if_else(is.na(standAge), Stand_age, standAge)) %>%
-  select(-Stand_age) %>%
-  rename(hybridAge = standAge)
 
-standAge_filled
-```
 
 ```{r}
-standAge_fieldComputed <- lcc %>%
+lcc_sa_fieldComputedHybrid <- lcc %>%
   left_join(standAge_field, by = "site") %>%
-  dplyr::select(ID, standAge, fieldAge) %>%
-  rename(computedAge = standAge)
-
-standAge_fieldComputed
-```
-
-
-```{r}
-( missingStandAgeAfterFill = standAge_filled %>% filter(is.na(hybridAge)) )
-```
-
-```{r}
-standAge_filled %>% filter(researcher=="Gundale/Nilsson")
-```
-# Add computed and field age to full data frame
-
-```{r}
-
-( lcc_hybridAge = standAge_filled %>% 
-    full_join(standAge_fieldComputed, by = "ID") %>% 
+  #dplyr::select(ID, standAge, fieldAge) %>%
+  rename(computedAge = standAge) %>%
+  mutate(hybridAge = coalesce(fieldAge, computedAge)) %>% 
     filter(year_of_burn >2000) %>% 
     filter(year_of_burn != "unknown") %>%
     filter(!is.na(FWI)) %>%
     rename(fa00 = ForestAge_TC000, fa10 = ForestAge_TC010, fa20 = ForestAge_TC020, fa30 = ForestAge_TC030, fastd = LastTimeTCloss_std, faint = TCloss_intensity) %>%
     dplyr::select(-pred_burn_depth) %>%
     rename(pred_burn_depth = pred_burn_depth_LCC_11_18)
-)
+
+lcc_sa_fieldComputedHybrid
+```
+
+
+
+```{r}
+lcc_sa_fieldComputedHybrid %>% filter(is.na(hybridAge))
+lcc_sa_fieldComputedHybrid %>% filter(is.na(fieldAge))
+lcc_sa_fieldComputedHybrid %>% filter(is.na(computedAge))
 ```
 
 # Save files
@@ -204,13 +182,12 @@ standAge_filled %>% filter(researcher=="Gundale/Nilsson")
 ```{r eval=FALSE, include=FALSE}
 write.csv(missingStandAgeAfterFill, "../outputs/2025-11-12_MeetingData/MissingStandAge.csv", row.names=F)
 ```
-```{r eval=FALSE, include=FALSE}
-write.csv(lcc_hybridAge, "../outputs/LCC_cleaned/csv/2025-11-29_LCC_SpatialData.csv", row.names=F)
-```
 
 ```{r eval=FALSE, include=FALSE}
-write.csv(standAge_filled, "../outputs/LCC_cleaned/csv/2025-11-09_LCC_FullData.csv", row.names=F)
+write.csv(lcc_sa_fieldComputedHybrid, "../outputs/LCC_cleaned/csv/2025-12-02_LCC_SpatialData.csv", row.names=F)
 ```
+
+
 
 ```{r eval=FALSE, include=FALSE}
 write.csv(standAge_fieldComputed, "../outputs/LCC_cleaned/csv/2025-11-10_LCC_StandAgeFieldComputed.csv", row.names=F)
